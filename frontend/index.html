@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medical History Chatbot</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      height: 100vh;
+      display: flex;
+    }
+
+    /* ── Left sidebar ── */
+    #sidebar {
+      width: 280px;
+      background: #1a3a5c;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    #sidebar h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #7fc8f8;
+    }
+
+    #patient-search {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    #patient-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .patient-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: background 0.2s;
+    }
+
+    .patient-item:hover,
+    .patient-item.active {
+      background: #0d7377;
+    }
+
+    .patient-item .name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .patient-item .meta {
+      font-size: 12px;
+      color: #aac8e0;
+      margin-top: 2px;
+    }
+
+    /* ── Login screen ── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: #1a3a5c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #login-box {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      width: 380px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    #login-box h1 {
+      color: #1a3a5c;
+      margin-bottom: 8px;
+    }
+
+    #login-box p {
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #dde;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: #0d7377;
+    }
+
+    #login-btn {
+      width: 100%;
+      padding: 14px;
+      background: #1a3a5c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #login-btn:hover {
+      background: #0d7377;
+    }
+
+    #login-error {
+      color: #c0392b;
+      font-size: 13px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* ── Main chat area ── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #chat-header {
+      background: white;
+      padding: 16px 24px;
+      border-bottom: 2px solid #e0e8f0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #chat-header h3 {
+      color: #1a3a5c;
+      font-size: 18px;
+    }
+
+    #chat-header .badge {
+      background: #e8f4fd;
+      color: #0d7377;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .msg {
+      max-width: 75%;
+      padding: 14px 18px;
+      border-radius: 16px;
+      line-height: 1.6;
+    }
+
+    .msg.doctor {
+      background: #1a3a5c;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.bot {
+      background: white;
+      color: #1c1c2e;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .msg.bot .intent-badge {
+      font-size: 11px;
+      color: #0d7377;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .msg.bot .sources {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .msg.bot div.text {
+      white-space: normal;
+    }
+
+    .msg.bot ul,
+    .msg.bot ol {
+      margin-left: 20px;
+      margin-bottom: 10px;
+    }
+
+    .msg.bot p {
+      margin-bottom: 8px;
+    }
+
+    .msg.bot code {
+      background: #eee;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .typing-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #0d7377;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: bounce 0.8s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.30s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    #input-area {
+      background: white;
+      padding: 16px 24px;
+      border-top: 2px solid #e0e8f0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    #query-input {
+      flex: 1;
+      padding: 14px;
+      border: 2px solid #dde;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      resize: none;
+      max-height: 120px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    #query-input:focus {
+      border-color: #1a3a5c;
+    }
+
+    #send-btn {
+      padding: 14px 24px;
+      background: #1a3a5c;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    #send-btn:hover {
+      background: #0d7377;
+    }
+
+    #send-btn:disabled {
+      background: #aaa;
+      cursor: default;
+    }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+
+    #modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    #modal-content h3 {
+      margin-bottom: 20px;
+      color: #1a3a5c;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-cancel {
+      background: #eee;
+      color: #444;
+    }
+
+    .btn-save {
+      background: #1a3a5c;
+      color: white;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Modal -->
+  <div id="modal-overlay">
+    <div id="modal-content">
+      <h3>🆕 Register New Patient</h3>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="reg-name" placeholder="John Doe" />
+      </div>
+      <div class="form-group">
+        <label>Date of Birth</label>
+        <input type="date" id="reg-dob" />
+      </div>
+      <div class="form-group">
+        <label>Gender</label>
+        <select id="reg-gender" style="width:100%; padding: 12px; border: 2px solid #dde; border-radius: 8px;">
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+          <option value="O">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Blood Type</label>
+        <select id="reg-blood" style="width:100%; padding: 12px; border: 2px solid #dde; border-radius: 8px;">
+          <option value="O+">O+</option>
+          <option value="O-">O-</option>
+          <option value="A+">A+</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B-">B-</option>
+          <option value="AB+">AB+</option>
+          <option value="AB-">AB-</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" id="reg-phone" placeholder="555-0101" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save" id="reg-btn" onclick="registerPatient()">Register</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="login-screen">
+    <div id="login-box">
+      <h1>🏥 Medical Chatbot</h1>
+      <p>Sign in with your doctor credentials</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" value="doctor@hospital.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" value="doctor123" />
+      </div>
+      <button id="login-btn" onclick="login()">Sign In</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="margin:0">👥 Patients</h2>
+      <button onclick="openModal()"
+        style="background:#0d7377; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer;">+
+        Add</button>
+    </div>
+    <input type="text" id="patient-search" placeholder="Search by name..." oninput="searchPatients(this.value)" />
+    <div id="patient-list">Loading...</div>
+    <div style="margin-top:auto; padding-top:20px; border-top:1px solid #3a5c7c;">
+      <button onclick="logout()"
+        style="background:transparent; color:#aac8e0; border:none; cursor:pointer; font-size:12px;">🚪 Sign Out</button>
+    </div>
+  </div>
+
+
+  <!-- Main Area -->
+  <div id="main">
+    <div id="no-patient">
+      <span style="font-size:48px">💬</span>
+      <span>Select a patient from the left to start chatting</span>
+    </div>
+    <div id="chat-area" style="display:none; flex:1; flex-direction:column;">
+      <div id="chat-header">
+        <span style="font-size:28px">🧑‍⚕️</span>
+        <div>
+          <h3 id="patient-name-header">Patient Name</h3>
+          <span class="badge" id="intent-display">Ready</span>
+        </div>
+      </div>
+      <div id="messages"></div>
+      <div id="input-area">
+        <textarea id="query-input" rows="1" placeholder="Ask about this patient..."
+          onkeydown="handleKey(event)"></textarea>
+        <button id="send-btn" onclick="sendMessage()">Send ➤</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = (window.location.protocol === 'file:' ? 'http://localhost' : (window.location.protocol + '//' + window.location.hostname)) + ':8000';
+
+    let token = localStorage.getItem('token');
+    let currentPatient = null;
+    let ws = null;
+    let botMsgDiv = null;
+    let botText = '';
+
+    // Check for existing token on load
+    if (token) {
+      document.getElementById('login-screen').style.display = 'none';
+      loadPatients();
+    }
+
+
+    // ── Login ─────────────────────────────────────────────────────────
+    async function login() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+      document.getElementById('login-btn').textContent = 'Signing in...';
+      try {
+        const res = await fetch(`${API}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: pass })
+        });
+        if (!res.ok) throw new Error('Invalid credentials');
+        const data = await res.json();
+        token = data.access_token;
+        localStorage.setItem('token', token);
+        document.getElementById('login-screen').style.display = 'none';
+        loadPatients();
+
+      } catch (e) {
+        document.getElementById('login-error').textContent = e.message;
+        document.getElementById('login-btn').textContent = 'Sign In';
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      location.reload();
+    }
+
+    // ── Patient Registration ─────────────────────────────────────────
+    function openModal() { document.getElementById('modal-overlay').style.display = 'flex'; }
+    function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+    async function registerPatient() {
+      const name = document.getElementById('reg-name').value;
+      const dob = document.getElementById('reg-dob').value;
+      const gender = document.getElementById('reg-gender').value;
+      const blood_type = document.getElementById('reg-blood').value;
+      const phone = document.getElementById('reg-phone').value;
+
+      if (!name) return alert("Name is required");
+
+      const btn = document.getElementById('reg-btn');
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      try {
+        const res = await fetch(`${API}/api/patients`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name, dob, gender, blood_type, phone })
+        });
+        if (!res.ok) throw new Error('Failed to register patient');
+
+        closeModal();
+        loadPatients(); // Refresh list
+
+        // Reset fields
+        document.getElementById('reg-name').value = '';
+        document.getElementById('reg-dob').value = '';
+        document.getElementById('reg-phone').value = '';
+
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Register";
+      }
+    }
+
+    // ── Load patient list ─────────────────────────────────────────────
+    async function loadPatients(search = '') {
+      const res = await fetch(`${API}/api/patients?search=${search}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const patients = await res.json();
+      const list = document.getElementById('patient-list');
+      list.innerHTML = patients.map(p => `
+      <div class="patient-item" onclick="selectPatient(${p.id}, '${p.name.replace(/'/g, "\\'")}', '${(p.gender || '') + " " + (p.blood_type || '')}')"
+           id="pt-${p.id}">
+        <div class="name">${p.name}</div>
+        <div class="meta">${p.gender || ''} · ${p.blood_type || ''}</div>
+      </div>
+    `).join('');
+    }
+
+    function searchPatients(val) {
+      clearTimeout(window._searchTimer);
+      window._searchTimer = setTimeout(() => loadPatients(val), 300);
+    }
+
+    // ── Select a patient ──────────────────────────────────────────────
+    function selectPatient(id, name, meta) {
+      currentPatient = { id, name };
+      document.querySelectorAll('.patient-item').forEach(el => el.classList.remove('active'));
+      document.getElementById(`pt-${id}`).classList.add('active');
+      document.getElementById('patient-name-header').textContent = name;
+      document.getElementById('no-patient').style.display = 'none';
+      const ca = document.getElementById('chat-area');
+      ca.style.display = 'flex';
+      document.getElementById('messages').innerHTML = '';
+      addMessage('bot', `Hello! I have loaded ${name}'s records. What would you like to know?`, '', []);
+      connectWebSocket();
+    }
+
+    // ── WebSocket ─────────────────────────────────────────────────────
+    function connectWebSocket() {
+      if (ws) ws.close();
+      ws = new WebSocket('ws://' + window.location.hostname + ':8000/api/ws/chat');
+      ws.onopen = () => console.log('WebSocket connected');
+      ws.onerror = (e) => console.error('WS error', e);
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.error) {
+          addMessage('bot', '❌ Error: ' + data.error, '', []);
+          document.getElementById('send-btn').disabled = false;
+          return;
+        }
+        if (!botMsgDiv) {
+          botText = '';
+          botMsgDiv = createBotBubble();
+        }
+        if (!data.done) {
+          botText += data.chunk;
+          botMsgDiv.querySelector('.text').innerHTML = marked.parse(botText);
+          scrollToBottom();
+        } else {
+          if (data.intent) {
+            botMsgDiv.querySelector('.intent-badge').textContent = '🔍 ' + data.intent.replace('_', ' ');
+            document.getElementById('intent-display').textContent = data.intent.replace('_', ' ');
+          }
+          if (data.sources && data.sources.length) {
+            botMsgDiv.querySelector('.sources').innerHTML =
+              '<strong>Sources:</strong> ' + data.sources.slice(0, 3).join(' · ');
+          }
+          botMsgDiv = null;
+          document.getElementById('send-btn').disabled = false;
+        }
+      };
+    }
+
+    // ── Send a message ────────────────────────────────────────────────
+    function sendMessage() {
+      const input = document.getElementById('query-input');
+      const query = input.value.trim();
+      if (!query || !currentPatient) return;
+      input.value = '';
+      document.getElementById('send-btn').disabled = true;
+      addMessage('doctor', query, '', []);
+      addTypingIndicator();
+      ws.send(JSON.stringify({ query, patient_id: currentPatient.id, token }));
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────
+    function addMessage(role, text, intent, sources) {
+      removeTypingIndicator();
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      if (role === 'bot') {
+        div.innerHTML = `
+        <div class="intent-badge">${intent ? '🔍 ' + intent.replace('_', ' ') : ''}</div>
+        <div class="text">${marked.parse(text)}</div>
+        <div class="sources">${sources && sources.length ? '<strong>Sources:</strong> ' + sources.join(' · ') : ''}</div>
+      `;
+      } else {
+        div.textContent = text;
+      }
+      msgs.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+
+    function createBotBubble() {
+      removeTypingIndicator();
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg bot';
+      div.innerHTML = `<div class="intent-badge"></div><div class="text"></div><div class="sources"></div>`;
+      msgs.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+
+    function addTypingIndicator() {
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.id = 'typing';
+      div.className = 'msg bot';
+      div.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      msgs.appendChild(div);
+      scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const t = document.getElementById('typing');
+      if (t) t.remove();
+    }
+
+    function scrollToBottom() {
+      const msgs = document.getElementById('messages');
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  </script>
+</body>
+
+</html>

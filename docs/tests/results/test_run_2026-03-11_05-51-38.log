@@ -1,0 +1,128 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.2, pluggy-1.6.0 -- /media/omar/Graduation Project/GP/Project/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /media/omar/Graduation Project/GP/Project
+plugins: anyio-4.12.1, Faker-25.0.0
+collecting ... collected 20 items
+
+docs/tests/test_retriever.py::TestMedicationRetrieval::test_returns_only_active_medications PASSED [  5%]
+docs/tests/test_retriever.py::TestMedicationRetrieval::test_drug_name_filter PASSED [ 10%]
+docs/tests/test_retriever.py::TestMedicationRetrieval::test_drug_filter_case_insensitive PASSED [ 15%]
+docs/tests/test_retriever.py::TestMedicationRetrieval::test_sources_include_drug_name PASSED [ 20%]
+docs/tests/test_retriever.py::TestLabResultsRetrieval::test_returns_lab_results_ordered_by_date PASSED [ 25%]
+docs/tests/test_retriever.py::TestLabResultsRetrieval::test_lab_test_name_filter PASSED [ 30%]
+docs/tests/test_retriever.py::TestLabResultsRetrieval::test_date_range_filter PASSED [ 35%]
+docs/tests/test_retriever.py::TestLabResultsRetrieval::test_limit_applied PASSED [ 40%]
+docs/tests/test_retriever.py::TestAllergyRetrieval::test_returns_all_allergies PASSED [ 45%]
+docs/tests/test_retriever.py::TestAllergyRetrieval::test_sources_include_allergen PASSED [ 50%]
+docs/tests/test_retriever.py::TestVisitRetrieval::test_returns_visits_ordered_by_date PASSED [ 55%]
+docs/tests/test_retriever.py::TestVisitRetrieval::test_visit_limit_applied PASSED [ 60%]
+docs/tests/test_retriever.py::TestVisitRetrieval::test_visit_date_filter PASSED [ 65%]
+docs/tests/test_retriever.py::TestDiagnosisRetrieval::test_returns_all_diagnoses PASSED [ 70%]
+docs/tests/test_retriever.py::TestDiagnosisRetrieval::test_condition_filter PASSED [ 75%]
+docs/tests/test_retriever.py::TestHistoryLookupRetrieval::test_returns_combined_dict PASSED [ 80%]
+docs/tests/test_retriever.py::TestHistoryLookupRetrieval::test_history_has_data PASSED [ 85%]
+docs/tests/test_retriever.py::TestRiskFlagRetrieval::test_risk_flag_behaves_like_history PASSED [ 90%]
+docs/tests/test_retriever.py::TestEdgeCases::test_patient_with_no_records PASSED [ 95%]
+docs/tests/test_retriever.py::TestEdgeCases::test_unknown_intent_returns_empty PASSED [100%]
+
+=============================== warnings summary ===============================
+docs/tests/test_retriever.py::TestMedicationRetrieval::test_returns_only_active_medications
+  /media/omar/Graduation Project/GP/Project/backend/database.py:20: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 20 passed, 1 warning in 0.21s =========================
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.2, pluggy-1.6.0 -- /media/omar/Graduation Project/GP/Project/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /media/omar/Graduation Project/GP/Project
+plugins: anyio-4.12.1, Faker-25.0.0
+collecting ... collected 28 items
+
+docs/tests/test_api.py::TestHealthCheck::test_root_returns_200 PASSED    [  3%]
+docs/tests/test_api.py::TestHealthCheck::test_root_has_message PASSED    [  7%]
+docs/tests/test_api.py::TestAuthentication::test_login_success PASSED    [ 10%]
+docs/tests/test_api.py::TestAuthentication::test_login_wrong_password PASSED [ 14%]
+docs/tests/test_api.py::TestAuthentication::test_login_wrong_email PASSED [ 17%]
+docs/tests/test_api.py::TestAuthentication::test_login_missing_fields PASSED [ 21%]
+docs/tests/test_api.py::TestPatientListEndpoint::test_requires_auth PASSED [ 25%]
+docs/tests/test_api.py::TestPatientListEndpoint::test_list_patients_returns_200 PASSED [ 28%]
+docs/tests/test_api.py::TestPatientListEndpoint::test_list_patients_returns_list PASSED [ 32%]
+docs/tests/test_api.py::TestPatientListEndpoint::test_patient_has_required_fields PASSED [ 35%]
+docs/tests/test_api.py::TestPatientListEndpoint::test_search_by_name PASSED [ 39%]
+docs/tests/test_api.py::TestPatientListEndpoint::test_search_no_results PASSED [ 42%]
+docs/tests/test_api.py::TestPatientCreateEndpoint::test_create_patient_success FAILED [ 46%]
+docs/tests/test_api.py::TestPatientCreateEndpoint::test_create_patient_requires_name PASSED [ 50%]
+docs/tests/test_api.py::TestPatientCreateEndpoint::test_create_patient_requires_auth PASSED [ 53%]
+docs/tests/test_api.py::TestPatientDetailEndpoint::test_get_patient_by_id PASSED [ 57%]
+docs/tests/test_api.py::TestPatientDetailEndpoint::test_patient_detail_has_medical_history_fields PASSED [ 60%]
+docs/tests/test_api.py::TestPatientDetailEndpoint::test_patient_not_found PASSED [ 64%]
+docs/tests/test_api.py::TestPatientDetailEndpoint::test_get_medications PASSED [ 67%]
+docs/tests/test_api.py::TestPatientDetailEndpoint::test_get_labs PASSED  [ 71%]
+docs/tests/test_api.py::TestPatientDetailEndpoint::test_get_diagnoses PASSED [ 75%]
+docs/tests/test_api.py::TestChatEndpoint::test_chat_requires_auth PASSED [ 78%]
+docs/tests/test_api.py::TestChatEndpoint::test_chat_returns_answer PASSED [ 82%]
+docs/tests/test_api.py::TestChatEndpoint::test_chat_returns_valid_intent PASSED [ 85%]
+docs/tests/test_api.py::TestChatEndpoint::test_chat_invalid_patient PASSED [ 89%]
+docs/tests/test_api.py::TestChatEndpoint::test_docs_endpoint_accessible PASSED [ 92%]
+docs/tests/test_api.py::TestTokenValidation::test_expired_token_rejected PASSED [ 96%]
+docs/tests/test_api.py::TestTokenValidation::test_missing_bearer_prefix_rejected PASSED [100%]
+
+=================================== FAILURES ===================================
+____________ TestPatientCreateEndpoint.test_create_patient_success _____________
+docs/tests/test_api.py:168: in test_create_patient_success
+    assert resp.status_code == 200
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+=========================== short test summary info ============================
+FAILED docs/tests/test_api.py::TestPatientCreateEndpoint::test_create_patient_success
+======================== 1 failed, 27 passed in 19.26s =========================
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.2, pluggy-1.6.0 -- /media/omar/Graduation Project/GP/Project/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /media/omar/Graduation Project/GP/Project
+plugins: anyio-4.12.1, Faker-25.0.0
+collecting ... collected 6 items
+
+docs/tests/test_intent.py::test_medication_check_queries PASSED          [ 16%]
+docs/tests/test_intent.py::test_lab_results_queries FAILED               [ 33%]
+docs/tests/test_intent.py::test_allergy_check_queries PASSED             [ 50%]
+docs/tests/test_intent.py::test_overall_intent_accuracy FAILED           [ 66%]
+docs/tests/test_intent.py::test_confidence_scores_are_valid PASSED       [ 83%]
+docs/tests/test_intent.py::test_invalid_intent_falls_back PASSED         [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_lab_results_queries ___________________________
+docs/tests/test_intent.py:227: in test_lab_results_queries
+    assert accuracy >= 0.80, f"lab_results accuracy too low: {accuracy:.1%}"
+E   AssertionError: lab_results accuracy too low: 66.7%
+E   assert 0.6666666666666666 >= 0.8
+----------------------------- Captured stdout call -----------------------------
+
+lab_results accuracy: 66.7% (8/12)
+_________________________ test_overall_intent_accuracy _________________________
+docs/tests/test_intent.py:259: in test_overall_intent_accuracy
+    assert accuracy >= 0.85, f"Overall accuracy too low: {accuracy:.1%}"
+E   AssertionError: Overall accuracy too low: 58.8%
+E   assert 0.5875 >= 0.85
+----------------------------- Captured stdout call -----------------------------
+
+Overall accuracy: 58.8% (47/80)
+=========================== short test summary info ============================
+FAILED docs/tests/test_intent.py::test_lab_results_queries - AssertionError: ...
+FAILED docs/tests/test_intent.py::test_overall_intent_accuracy - AssertionErr...
+=================== 2 failed, 4 passed in 206.04s (0:03:26) ====================
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.2, pluggy-1.6.0 -- /media/omar/Graduation Project/GP/Project/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /media/omar/Graduation Project/GP/Project
+plugins: anyio-4.12.1, Faker-25.0.0
+collecting ... collected 7 items
+
+docs/tests/test_ner.py::test_drug_extraction FAILED                      [ 14%]
+docs/tests/test_ner.py::test_lab_test_extraction PASSED                  [ 28%]
+docs/tests/test_ner.py::test_date_range_extraction   File "/media/omar/Graduation Project/GP/Project/docs/tests/benchmark_pipeline.py", line 284
+    print(f"  GET /api/patients/{{id}}          → {results['GET /api/patients/{\"id\"}']\['median_ms']:.1f}ms")
+                                                                                                                ^
+SyntaxError: f-string expression part cannot include a backslash

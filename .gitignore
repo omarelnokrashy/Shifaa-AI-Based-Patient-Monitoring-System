@@ -1,0 +1,8 @@
+venv/
+reference_docs/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+import_log.txt
+Data/
