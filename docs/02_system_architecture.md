@@ -5,24 +5,24 @@
 The system follows a **3-tier architecture**: Frontend → Backend API → Database, with an additional **AI service layer** embedded within the backend.
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                           DOCTOR'S BROWSER                                   │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DOCTOR'S BROWSER                                  │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                   Single Page Application (HTML/JS)                  │   │
-│   │  Login → Patient Search → Chat Interface (WebSocket streaming)       │   │
+│   │                   Single Page Application (HTML/JS)                 │   │
+│   │  Login → Patient Search → Chat Interface (WebSocket streaming)      │   │
 │   └────────────────────────┬────────────────────────────────────────────┘   │
 └────────────────────────────│────────────────────────────────────────────────┘
                              │  HTTP REST + WebSocket (ws://)
                              ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                          FastAPI BACKEND (:8000)                              │
+│                          FastAPI BACKEND (:8000)                             │
 │                                                                              │
-│  ┌──────────────┐  ┌───────────────────┐  ┌──────────────────────────────┐  │
-│  │ /api/auth    │  │  /api/patients    │  │      /api/ws/chat            │  │
-│  │  (JWT login) │  │  (CRUD + search)  │  │   (WebSocket message loop)   │  │
-│  └──────┬───────┘  └────────┬──────────┘  └──────────────┬───────────────┘  │
+│  ┌──────────────┐  ┌───────────────────┐   ┌──────────────────────────────┐  │
+│  │ /api/auth    │  │  /api/patients    │   │      /api/ws/chat            │  │
+│  │  (JWT login) │  │  (CRUD + search)  │   │   (WebSocket message loop)   │  │
+│  └──────┬───────┘  └────────┬──────────┘   └──────────────┬───────────────┘  │
 │         │                   │                             │                  │
-│         └──────────┬────────┘               ┌────────────▼─────────────┐    │
+│         └──────────┬────────┘                ┌────────────▼─────────────┐    │
 │                    │                         │       AI PIPELINE        │    │
 │                    │     ┌───────────────────►  1. Intent Classifier    │    │
 │                    │     │                   │  2. NER Extractor        │    │
@@ -32,21 +32,21 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
 │         │  SQLAlchemy  │ │                                                   │
 │         │     ORM      │─┘                                                   │
 │         └──────┬───────┘                                                     │
-└────────────────│────────────────────────────────────────────────────────────┘
+└────────────────│─────────────────────────────────────────────────────────────┘
                  │  SQL queries
                  ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                         PostgreSQL DATABASE                                   │
+│                         PostgreSQL DATABASE                                  │
 │   patients | doctors | visits | diagnoses | medications | lab_results        │
-│   allergies | chat_logs                                                       │
+│   allergies | chat_logs                                                      │
 └──────────────────────────────────────────────────────────────────────────────┘
-                                    ▲
-                             (External)
-┌──────────────────────────────────────────┐
-│   LLM Backend (configurable via .env)    │
-│   Option A: OpenAI API (cloud)           │
-│   Option B: Ollama  (local, private)     │
-└──────────────────────────────────────────┘
+                                        ▲
+                                    (External)
+                    ┌──────────────────────────────────────────┐
+                    │   LLM Backend (configurable via .env)    │
+                    │   Option A: OpenAI API (cloud)           │
+                    │   Option B: Ollama  (local, private)     │
+                    └──────────────────────────────────────────┘
 ```
 
 ---
@@ -56,27 +56,25 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
 ```mermaid
 graph TB
     subgraph Browser["🌐 Browser - Frontend"]
-        UI[index.html SPA]
-        WS[WebSocket Client]
-        REST[REST Client - fetch API]
+        UI[Frontend]
+        WS[Client WebSocket]
+        REST[Client API]
     end
 
     subgraph Backend["⚙️ FastAPI Backend"]
-        Main[main.py - App Entry]
-        Auth[auth.py - JWT Middleware]
+        Auth[JWT Middleware]
         
         subgraph Routers["Routers"]
-            R_Auth[/api/auth/login]
-            R_Pat[/api/patients]
-            R_Chat[/api/chat POST]
-            R_WS[/api/ws/chat WebSocket]
+            R_Auth[auth/login]
+            R_Pat[patients]
+            R_WS[chat WebSocket]
         end
 
         subgraph Services["AI Services"]
-            Intent[intent.py - Classify Intent]
-            NER[ner.py - Extract Entities]
-            Retriever[retriever.py - Query DB]
-            LLM[llm.py - Generate Answer]
+            Intent[Classify Intent]
+            NER[Extract Entities]
+            Retriever[Query DB]
+            LLM[Generate Answer]
         end
     end
 

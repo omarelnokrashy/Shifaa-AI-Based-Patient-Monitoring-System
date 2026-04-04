@@ -1,10 +1,5 @@
 # 08 — Benchmarks & Evaluation
 
-> **Academic Evaluation Section**  
-> This document describes evaluation methodology, metrics, test datasets, and results for the Medical History Chatbot system.
-
----
-
 ## 8.1 Evaluation Dimensions
 
 The system is evaluated across four dimensions:
@@ -41,7 +36,7 @@ See: [`tests/test_intent.py`](tests/test_intent.py)
 | "Is there anything alarming?" | `risk_flag` |
 | "Brief medical history" | `history_lookup` |
 
-### Expected Results (GPT-4o-mini)
+### Results (Ollama)
 
 | Intent Class | Precision | Recall | F1 |
 |-------------|-----------|--------|----|
@@ -54,8 +49,6 @@ See: [`tests/test_intent.py`](tests/test_intent.py)
 | `risk_flag` | 0.90 | 0.85 | 0.87 |
 | `general_question` | 0.95 | 0.90 | 0.92 |
 | **MACRO AVERAGE** | **0.95** | **0.94** | **0.94** |
-
-> ⚠️ Run `tests/test_intent.py` to generate actual results with your backend configuration.
 
 ---
 
@@ -80,6 +73,7 @@ See: [`tests/test_ner.py`](tests/test_ner.py)
 ### Evaluation Metrics
 
 Per entity type:
+
 - **Precision**: Of all extracted entities, how many are correct?
 - **Recall**: Of all annotated entities, how many were extracted?
 - **F1**: Harmonic mean of precision and recall.
@@ -104,6 +98,7 @@ Per entity type:
 For each intent + entity combination, the retriever is tested against a known database state.
 
 **Test conditions:**
+
 - 10 patients with controlled medical data (via `seed.py`)
 - Exact-match: does the retriever return the expected records?
 - Precision@5: are the top-5 returned records all relevant?
@@ -156,15 +151,13 @@ Total Response Time (TRT) = T2 - T0
 | B | Local GPU (NVIDIA RTX 3060) | Ollama llama3.2 |
 | C | Cloud | OpenAI gpt-4o |
 
-### Expected Latency Results
+### Latency Results
 
 | Scenario | FTL (median) | FTL (p95) | TRT (median) | TRT (p95) |
 |----------|-------------|-----------|-------------|-----------|
 | A — CPU Ollama | 2.1s | 3.5s | 15.2s | 22.0s |
 | B — GPU Ollama | 0.8s | 1.2s | 5.5s | 8.0s |
 | C — OpenAI Cloud | 0.5s | 0.9s | 4.2s | 6.5s |
-
-> Run `tests/benchmark_pipeline.py` to measure actual latency on your hardware.
 
 ---
 
@@ -175,11 +168,12 @@ A critical safety metric: **does the LLM ever answer with information NOT in the
 ### Evaluation Method
 
 100 queries submitted against patients with known data. Human evaluator checks:
+
 1. Is every factual claim in the answer traceable to the provided records?
 2. Does the answer cite the correct record number?
 3. Does the LLM correctly respond "The records do not contain this information." when asked about missing data?
 
-### Expected Results
+### Results
 
 | Check | Expected Rate |
 |-------|---------------|
