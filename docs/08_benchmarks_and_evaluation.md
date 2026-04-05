@@ -78,7 +78,7 @@ Per entity type:
 - **Recall**: Of all annotated entities, how many were extracted?
 - **F1**: Harmonic mean of precision and recall.
 
-### Expected Results
+### Results
 
 | Entity Type | Precision | Recall | F1 |
 |------------|-----------|--------|----|
