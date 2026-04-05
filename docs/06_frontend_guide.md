@@ -18,34 +18,34 @@ The interface has four main sections:
 ┌──────────────────────────────────────────────────────────────┐
 │  LOGIN SCREEN (overlay, z-index: 100)                        │
 │  - Email + Password fields                                   │
-│  - Sign In button → calls POST /api/auth/login              │
+│  - Sign In button → calls POST /api/auth/login               │
 └──────────────────────────────────────────────────────────────┘
 
 ┌────────────────┬─────────────────────────────────────────────┐
 │  SIDEBAR       │  MAIN AREA                                  │
 │  (280px wide)  │                                             │
-│                │  ┌─────────────────────────────────────┐   │
-│  👥 Patients   │  │ CHAT HEADER                         │   │
-│  [+ Add]       │  │ patient name | intent badge         │   │
-│                │  └─────────────────────────────────────┘   │
+│                │  ┌─────────────────────────────────────┐    │
+│  👥 Patients   │  │ CHAT HEADER                         │    │
+│  [+ Add]       │  │ patient name | intent badge         │    │
+│                │  └─────────────────────────────────────┘    │
 │  [Search box]  │                                             │
-│                │  ┌─────────────────────────────────────┐   │
-│  Patient list  │  │ MESSAGES AREA (scrollable)          │   │
-│  (scrollable)  │  │ Bot messages (left-aligned)         │   │
-│                │  │ Doctor messages (right-aligned)     │   │
-│                │  │ Typing indicator (animated dots)    │   │
-│  [Sign Out]    │  └─────────────────────────────────────┘   │
+│                │  ┌─────────────────────────────────────┐    │
+│  Patient list  │  │ MESSAGES AREA (scrollable)          │    │
+│  (scrollable)  │  │ Bot messages (left-aligned)         │    │
+│                │  │ Doctor messages (right-aligned)     │    │
+│                │  │ Typing indicator (animated dots)    │    │
+│  [Sign Out]    │  └─────────────────────────────────────┘    │
 │                │                                             │
-│                │  ┌─────────────────────────────────────┐   │
-│                │  │ INPUT AREA                          │   │
-│                │  │ [Textarea] [Send ➤ button]          │   │
-│                │  └─────────────────────────────────────┘   │
+│                │  ┌─────────────────────────────────────┐    │
+│                │  │ INPUT AREA                          │    │
+│                │  │ [Textarea] [Send ➤ button]          │    │
+│                │  └─────────────────────────────────────┘    │
 └────────────────┴─────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│  MODAL OVERLAY (z-index: 200, hidden by default)            │
-│  🆕 Register New Patient form                               │
-│  - Name, DOB, Gender, Blood Type, Phone                     │
+│  MODAL OVERLAY (z-index: 200, hidden by default)             │
+│  🆕 Register New Patient form                                │ 
+│  - Name, DOB, Gender, Blood Type, Phone                      │
 │  - Cancel | Register buttons                                 │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -127,6 +127,7 @@ WebSocket CONNECT on patient select
 ## 6.6 Markdown Rendering
 
 Bot responses are rendered as Markdown using `marked.js`. This supports:
+
 - **Bold** and *italic* text
 - Bullet and numbered lists
 - `code` inline formatting
@@ -162,6 +163,7 @@ const API = (window.location.protocol === 'file:'
 ```
 
 This means the file works when:
+
 - Opened directly as a file (`file:///...`) → uses `http://localhost:8000`
 - Served from a web server on the same host → uses the current hostname
 
