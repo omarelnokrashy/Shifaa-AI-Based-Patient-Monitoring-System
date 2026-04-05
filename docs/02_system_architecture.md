@@ -203,7 +203,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Doctor
+    actor Nurse
     actor Sensor as Sensor / Camera
     participant WS as WebSocket Router
     participant VIS as Vision Analyzer

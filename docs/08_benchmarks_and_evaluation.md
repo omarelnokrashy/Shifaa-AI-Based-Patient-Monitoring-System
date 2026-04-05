@@ -119,7 +119,7 @@ See: [`tests/test_retriever.py`](tests/test_retriever.py)
 | `history_lookup` | Combined all tables | At least 1 record per table type |
 | `risk_flag` | Same as history_lookup | Same as history_lookup |
 
-### Expected Results
+### Results
 
 | Test Category | Pass Rate |
 |---------------|-----------|
