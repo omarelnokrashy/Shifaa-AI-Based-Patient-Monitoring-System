@@ -10,6 +10,7 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │                   Single Page Application (HTML/JS)                 │   │
 │   │  Login → Patient Search → Chat Interface (WebSocket streaming)      │   │
+│   │  + Alert Notification Panel  + ECG / Vitals Live Dashboard          │   │
 │   └────────────────────────┬────────────────────────────────────────────┘   │
 └────────────────────────────│────────────────────────────────────────────────┘
                              │  HTTP REST + WebSocket (ws://)
@@ -17,36 +18,65 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                          FastAPI BACKEND (:8000)                             │
 │                                                                              │
-│  ┌──────────────┐  ┌───────────────────┐   ┌──────────────────────────────┐  │
-│  │ /api/auth    │  │  /api/patients    │   │      /api/ws/chat            │  │
-│  │  (JWT login) │  │  (CRUD + search)  │   │   (WebSocket message loop)   │  │
-│  └──────┬───────┘  └────────┬──────────┘   └──────────────┬───────────────┘  │
-│         │                   │                             │                  │
-│         └──────────┬────────┘                ┌────────────▼─────────────┐    │
-│                    │                         │       AI PIPELINE        │    │
-│                    │     ┌───────────────────►  1. Intent Classifier    │    │
-│                    │     │                   │  2. NER Extractor        │    │
-│                    │     │                   │  3. DB Retriever         │    │
-│                    ▼     │                   │  4. LLM Generator        │    │
-│         ┌──────────────┐ │                   └──────────────────────────┘    │
-│         │  SQLAlchemy  │ │                                                   │
-│         │     ORM      │─┘                                                   │
+│  ┌──────────────┐  ┌───────────────────┐  ┌────────────────────────────┐     │
+│  │ /api/auth    │  │  /api/patients    │  │      /api/ws/chat          │     │
+│  │  (JWT login) │  │  (CRUD + search)  │  │   (WebSocket message loop) │     │
+│  └──────┬───────┘  └────────┬──────────┘  └──────────────┬─────────────┘     │
+│         │                   │                            │                   │
+│         └──────────┬────────┘               ┌────────────▼────────────┐      │
+│                    │                        │       AI PIPELINE       │      │
+│                    │     ┌──────────────────►  1. Intent Classifier   │      │
+│                    │     │                  │  2. NER Extractor       │      │
+│                    │     │                  │  3. DB Retriever        │      │
+│                    ▼     │                  │  4. LLM Generator       │      │
+│         ┌──────────────┐ │                  └─────────────────────────┘      │
+│         │  SQLAlchemy  │─┘                                                   │
+│         │     ORM      │                                                     │
 │         └──────┬───────┘                                                     │
-└────────────────│─────────────────────────────────────────────────────────────┘
+│                │                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐     │
+│  │                   /api/ws/vitals  (WebSocket stream)                │     │
+│  │                                                                     │     │
+│  │  ┌─────────────────────────────────────────────────────────────┐    │     │
+│  │  │              VITAL SIGNS INGESTION LAYER                    │    │     │
+│  │  │  ECG Device ──► ECG Parser      → heart_rate, rhythm, QRS   │    │     │
+│  │  │  Sensor Hub ──► Vitals Parser   → SpO₂, temp, glucose, BP   │    │     │
+│  │  │  Camera     ──► Vision Analyzer → pose, motion, fall risk   │    │     │
+│  │  └──────────────────────────┬──────────────────────────────────┘    │     │
+│  │                             │  normalized VitalEvent{}              │     │
+│  │                             ▼                                       │     │ 
+│  │  ┌─────────────────────────────────────────────────────────────┐    │     │
+│  │  │                  ANOMALY DETECTOR                           │    │     │
+│  │  │   Rule engine  : thresholds (HR>120, SpO₂<90, temp>39°C…)   │    │     │
+│  │  │   ML model     : fall detection, arrhythmia classification  │    │     │
+│  │  │   Vision check : abnormal motion, seizure                   │    │     │
+│  │  └──────────────────────────┬──────────────────────────────────┘    │     │
+│  │                             │  AnomalyEvent{ severity, type,        │     │ 
+│  │                             │    snapshot, patient_id }             │     │
+│  │                             ▼                                       │     │
+│  │  ┌──────────────────────────────────────────────────────────────┐   │     │
+│  │  │                  ALERT PUBLISHER                             │   │     │
+│  │  │   → INSERT alerts table (PostgreSQL)                         │   │     │
+│  │  │   → push to doctor via WebSocket                             │   │     │
+│  │  │     { type:"alert", severity, message, snapshot_url }        │   │     │
+│  │  └──────────────────────────────────────────────────────────────┘   │     │
+│  └─────────────────────────────────────────────────────────────────┘   │     │
+└──────────────────────────────────────────────────────────────────────────────┘
                  │  SQL queries
                  ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                         PostgreSQL DATABASE                                  │
 │   patients | doctors | visits | diagnoses | medications | lab_results        │
-│   allergies | chat_logs                                                      │
+│   allergies | chat_logs | vital_signs | alerts                               │
 └──────────────────────────────────────────────────────────────────────────────┘
-                                        ▲
-                                    (External)
-                    ┌──────────────────────────────────────────┐
-                    │   LLM Backend (configurable via .env)    │
-                    │   Option A: OpenAI API (cloud)           │
-                    │   Option B: Ollama  (local, private)     │
-                    └──────────────────────────────────────────┘
+          ▲                                          ▲
+     (External)                                 (External)
+┌──────────────────────────┐          ┌───────────────────────────────────┐
+│  LLM Backend (.env)      │          │   Medical Devices / IoT           │
+│  Option A: OpenAI (cloud)│          │   ECG monitor  (HL7 / MQTT)       │
+│  Option B: Ollama (local)│          │   sensors (BLE / HTTP)   │
+└──────────────────────────┘          │   IP camera    (RTSP / WebSocket) │
+                                      └───────────────────────────────────┘
 ```
 
 ---
@@ -55,61 +85,83 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
 
 ```mermaid
 graph TB
-    subgraph Browser["🌐 Browser - Frontend"]
-        UI[Frontend]
-        WS[Client WebSocket]
-        REST[Client API]
+    subgraph Browser["🌐 Browser"]
+        UI([Frontend SPA])
+        WS([Chat WebSocket])
+        REST([REST Client])
+        AlertPanel([Alert Panel])
+        VitalDash([Vitals Dashboard])
     end
 
-    subgraph Backend["⚙️ FastAPI Backend"]
-        Auth[JWT Middleware]
-        
+    subgraph Backend["⚙️ FastAPI :8000"]
+        Auth{JWT Middleware}
+
         subgraph Routers["Routers"]
-            R_Auth[auth/login]
-            R_Pat[patients]
-            R_WS[chat WebSocket]
+            R_Auth[[auth/login]]
+            R_Pat[[patients]]
+            R_WS[[ws/chat]]
+            R_Vitals[[ws/vitals]]
         end
 
-        subgraph Services["AI Services"]
-            Intent[Classify Intent]
-            NER[Extract Entities]
-            Retriever[Query DB]
-            LLM[Generate Answer]
+        subgraph ChatAI["💬 Chat Pipeline"]
+            Intent(["1 · Classify Intent"])
+            NER(["2 · Extract Entities"])
+            Retriever(["3 · Query DB"])
+            LLM(["4 · Generate Answer"])
+        end
+
+        subgraph AlertPipeline["🚨 Alert Pipeline"]
+            ECGParser(["ECG Parser"])
+            VisionAnalyzer(["Vision Analyzer"])
+            Ingestion(["Vitals Ingestion"])
+            AnomalyDetector(["Anomaly Detector"])
+            AlertPublisher(["Alert Publisher"])
         end
     end
 
     subgraph DB["🗄️ PostgreSQL"]
-        Patients[(patients)]
-        Doctors[(doctors)]
-        Diagnoses[(diagnoses)]
-        Medications[(medications)]
-        Labs[(lab_results)]
-        Allergies[(allergies)]
-        Visits[(visits)]
-        Logs[(chat_logs)]
+        direction LR
+        T1[(patients)]
+        T2[(doctors)]
+        T3[(diagnoses)]
+        T4[(medications)]
+        T5[(lab_results)]
+        T6[(allergies)]
+        T7[(visits)]
+        T8[(chat_logs)]
+        T9[(vital_signs)]
+        T10[(alerts)]
     end
 
     subgraph LLMBack["🤖 LLM Backend"]
-        OA[OpenAI GPT-4o / mini]
+        OA[OpenAI GPT-4o]
         OL[Ollama llama3.2]
     end
 
-    UI --> REST
-    UI --> WS
-    REST --> R_Auth
-    REST --> R_Pat
+    subgraph Devices["🩺 Medical Devices"]
+        ECG[ECG Monitor\nHL7 · MQTT]
+        Camera[IP Camera\nRTSP · WebSocket]
+    end
+
+    UI --> REST & WS
+    UI --> AlertPanel & VitalDash
+    REST --> R_Auth & R_Pat
     WS --> R_WS
-    R_Auth --> Auth
-    R_Pat --> Auth
-    R_WS --> Intent
-    R_WS --> NER
-    R_WS --> Retriever
-    R_WS --> LLM
+    VitalDash --> R_Vitals
+    R_Auth & R_Pat --> Auth
+    Auth --> T2
+
+    R_WS --> Intent --> NER --> Retriever --> LLM
     Retriever --> DB
-    Intent --> LLMBack
-    NER --> LLMBack
-    LLM --> LLMBack
-    Auth --> Doctors
+    Intent & NER & LLM --> LLMBack
+
+    ECG --> ECGParser
+    Camera --> VisionAnalyzer
+    ECGParser & VisionAnalyzer --> Ingestion
+    Ingestion --> T9
+    Ingestion --> AnomalyDetector --> AlertPublisher
+    AlertPublisher --> T10
+    AlertPublisher --> R_Vitals --> AlertPanel
 ```
 
 ---
@@ -117,6 +169,8 @@ graph TB
 ## 2.3 AI Pipeline — Detailed Flow
 
 When a doctor sends a message, it passes through 4 sequential steps:
+
+**Chat pipeline:**
 
 ```mermaid
 sequenceDiagram
@@ -141,6 +195,29 @@ sequenceDiagram
     WS->>LLM: generate_answer(query, intent, records, patient)
     LLM-->>Doctor: streaming token chunks (WebSocket)
     WS->>LOG: INSERT chat_logs (query, response, intent)
+```
+
+---
+
+**Alert pipeline:**
+
+```mermaid
+sequenceDiagram
+    actor Doctor
+    actor Sensor as Sensor / Camera
+    participant WS as WebSocket Router
+    participant VIS as Vision Analyzer
+    participant ANO as Anomaly Detector
+    participant PUB as Alert Publisher
+    participant DB as PostgreSQL
+
+    Sensor->>WS: frame / vitals stream (continuous)
+    WS->>VIS: analyze(frame, vitals)
+    VIS->>ANO: detect_anomaly(pose, motion, vitals_thresholds)
+    Note over ANO: fall detected / abnormal motion<br/>vitals out of range
+    ANO-->>PUB: { type, severity, snapshot, patient_id }
+    PUB->>DB: INSERT alert record (patient_id, vital_id, severity)
+    PUB-->>Doctor: push alert via WebSocket<br/>{ type: "alert", severity: "critical",<br/>snapshot_url, message }
 ```
 
 ---
