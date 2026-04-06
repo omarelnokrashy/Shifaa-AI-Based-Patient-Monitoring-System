@@ -158,6 +158,25 @@
       flex: 1;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    #chat-area {
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    #no-patient {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #1a3a5c;
+      font-weight: 500;
     }
 
     #chat-header {
@@ -469,7 +488,7 @@
       <span style="font-size:48px">💬</span>
       <span>Select a patient from the left to start chatting</span>
     </div>
-    <div id="chat-area" style="display:none; flex:1; flex-direction:column;">
+    <div id="chat-area" style="display:none;">
       <div id="chat-header">
         <span style="font-size:28px">🧑‍⚕️</span>
         <div>
