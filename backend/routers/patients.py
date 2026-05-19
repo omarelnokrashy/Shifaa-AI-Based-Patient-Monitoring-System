@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from ..database import get_db
 from ..auth import get_current_doctor
 from .. import models, schemas
@@ -8,13 +8,24 @@ from .. import models, schemas
 router = APIRouter(prefix='/api/patients', tags=['patients'])
 
 @router.get('', response_model=List[schemas.PatientOut])
-def list_patients(search: str = '', db: Session = Depends(get_db),
-                  doctor = Depends(get_current_doctor)):
-    """Search patients by name. If search is empty, return all."""
+def list_patients(
+    search:     str           = '',
+    gender:     Optional[str] = None,
+    blood_type: Optional[str] = None,
+    limit:      int           = 50,
+    offset:     int           = 0,
+    db:         Session       = Depends(get_db),
+    doctor                    = Depends(get_current_doctor)
+):
+    """Search and filter patients. Supports name search, gender, and blood_type filters."""
     q = db.query(models.Patient)
     if search:
         q = q.filter(models.Patient.name.ilike(f'%{search}%'))
-    return q.order_by(models.Patient.name).limit(1000).all()
+    if gender:
+        q = q.filter(models.Patient.gender == gender)
+    if blood_type:
+        q = q.filter(models.Patient.blood_type == blood_type)
+    return q.order_by(models.Patient.name).offset(offset).limit(limit).all()
 @router.post('', response_model=schemas.PatientOut)
 def create_patient(patient_in: schemas.PatientBase, db: Session = Depends(get_db),
                    doctor = Depends(get_current_doctor)):

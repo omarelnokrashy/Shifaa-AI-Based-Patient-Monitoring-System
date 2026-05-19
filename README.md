@@ -1,6 +1,6 @@
 # 🏥 Medical History Chatbot
 
-An AI-powered patient history retrieval system designed for doctors. This clinical assistant uses a multi-stage LLM pipeline to classify intents, extract medical entities, and retrieve relevant data from patient records to generate grounded, source-cited answers.
+An AI-powered patient history retrieval system and multi-modal clinical assistant designed for doctors. Powered by **MedGemma 1.5**, this application features a clinical reasoning pipeline, multi-modal medical image analysis (OCR, X-rays, MRI/CT), and an intuitive UI to manage patient records and streamline diagnoses.
 
 ---
 
@@ -12,20 +12,21 @@ An AI-powered patient history retrieval system designed for doctors. This clinic
 - **PostgreSQL** (running)
 - **Ollama** (optional, for local LLM)
 
-### 2. Backend Setup
+### 2. Environment Setup
 
 ```bash
 # Clone the repository and enter the directory
 cd "/media/omar/Graduation Project/GP/Project"
 
-# Activate the virtual environment
-source venv/bin/activate
+# Create and activate the Conda environment
+conda create -n medical_chatbot python=3.10 -y
+conda activate medical_chatbot
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Configure environment variables
-# Ensure your .env file has the correct DATABASE_URL and LLM_BACKEND
+# Ensure your .env file has the correct DATABASE_URL and OLLAMA_MODEL (e.g., medgemma1.5:latest)
 nano .env
 ```
 
@@ -58,8 +59,8 @@ Then visit [http://localhost:3000](http://localhost:3000).
 
 ## 🛠 Project Structure
 
-- `backend/`: FastAPI application, database models, and AI services.
-- `frontend/`: Vanilla HTML/JS/CSS clinical chat interface.
+- `backend/`: FastAPI application, database models, and AI services (including LLM integration).
+- `frontend/`: Multi-modal HTML/JS/CSS clinical chat interface featuring a Patient Hub, Image Uploads, and a Claude-style Thinking UI.
 - `docs/`: Comprehensive documentation, system architecture, and academic benchmarks.
 - `Data/`: Synthea synthetic patient dataset.
 

@@ -55,3 +55,20 @@ def get_current_doctor(token: str = Depends(oauth2_scheme),
     if doctor is None:
         raise credentials_exception
     return doctor
+
+
+def get_current_doctor_from_token(token: str, db: Session):
+    """Non-dependency version: accepts a raw JWT string. Used by multipart form endpoints."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail='Invalid or expired token',
+    )
+    try:
+        payload   = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        doctor_id = int(payload.get('sub'))
+    except (JWTError, ValueError, TypeError):
+        raise credentials_exception
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
+    if doctor is None:
+        raise credentials_exception
+    return doctor

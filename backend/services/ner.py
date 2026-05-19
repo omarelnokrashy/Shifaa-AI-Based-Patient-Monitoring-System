@@ -7,11 +7,11 @@ load_dotenv()
 # Configuration
 BACKEND = os.getenv('LLM_BACKEND', 'openai').lower()
 OPENAI_KEY = os.getenv('OPENAI_API_KEY')
-OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
+OLLAMA_NER_MODEL = os.getenv('OLLAMA_NER_MODEL', 'llama3.2')
 
 if BACKEND == 'ollama':
     client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
-    MODEL = OLLAMA_MODEL
+    MODEL = OLLAMA_NER_MODEL
 else:
     client = OpenAI(api_key=OPENAI_KEY)
     MODEL = 'gpt-4o-mini'

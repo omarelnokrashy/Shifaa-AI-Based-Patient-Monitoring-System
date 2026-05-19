@@ -73,8 +73,8 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
      (External)                                 (External)
 ┌──────────────────────────┐          ┌───────────────────────────────────┐
 │  LLM Backend (.env)      │          │   Medical Devices / IoT           │
-│  Option A: OpenAI (cloud)│          │   ECG monitor  (HL7 / MQTT)       │
-│  Option B: Ollama (local)│          │   sensors (BLE / HTTP)   │
+│  Option A: Ollama (local)│          │   ECG monitor  (HL7 / MQTT)       │
+│  Option B: OpenAI (cloud)│          │   sensors (BLE / HTTP)            │
 └──────────────────────────┘          │   IP camera    (RTSP / WebSocket) │
                                       └───────────────────────────────────┘
 ```
@@ -100,6 +100,7 @@ graph TB
             R_Auth[[auth/login]]
             R_Pat[[patients]]
             R_WS[[ws/chat]]
+            R_Uploads[[chat/analyze-image]]
             R_Vitals[[ws/vitals]]
         end
 
@@ -134,8 +135,8 @@ graph TB
     end
 
     subgraph LLMBack["🤖 LLM Backend"]
+        OL[Ollama medgemma1.5]
         OA[OpenAI GPT-4o]
-        OL[Ollama llama3.2]
     end
 
     subgraph Devices["🩺 Medical Devices"]
@@ -248,7 +249,8 @@ Project/
 │   ├── routers/
 │   │   ├── auth.py              # POST /api/auth/login
 │   │   ├── patients.py          # GET/POST /api/patients, GET /api/patients/{id}/...
-│   │   └── chat.py              # POST /api/chat, WebSocket /api/ws/chat
+│   │   ├── chat.py              # POST /api/chat, WebSocket /api/ws/chat
+│   │   └── uploads.py           # POST /api/chat/analyze-image (SSE Stream)
 │   └── services/
 │       ├── intent.py            # LLM-based intent classification (8 classes)
 │       ├── ner.py               # LLM-based medical NER (5 entity types)

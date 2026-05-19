@@ -27,13 +27,17 @@ Doctor Query
       │
       ▼
 ┌────────────┐
-│   STAGE 4  │  LLM Answer Generation
+│   STAGE 4  │  LLM Answer Generation (MedGemma 1.5)
 │   llm.py   │  → Formats records + generates grounded response
-└─────┬──────┘  → Streams response token-by-token
+└─────┬──────┘  → Wraps reasoning in <think> tags
       │
       ▼
-  Answer to Doctor (via WebSocket streaming)
+  Answer to Doctor (via WebSocket streaming with think-parser)
 ```
+
+**Alternative Flows:**
+- **General Medical Mode:** Bypasses Stages 1-3. Doctor query goes straight to Stage 4 using a general medical system prompt.
+- **Image Upload:** Bypasses WebSocket. Uses a standard HTTP POST with SSE (Server-Sent Events) streaming to process base64 multi-modal images alongside a text query.
 
 ---
 
@@ -70,8 +74,8 @@ Return ONLY valid JSON.
 ```
 
 **Model configuration:**
-- OpenAI backend: `gpt-4o-mini` (fast, cheap classification)
-- Ollama backend: `llama3.2`
+- Ollama backend (default): `medgemma1.5:latest`
+- OpenAI backend (legacy): `gpt-4o-mini`
 - Temperature: `0.0` (deterministic)
 - Response format: `json_object`
 
@@ -162,8 +166,11 @@ sources = ["Lab #12: HbA1c = 8.1 % on 2025-11-20", ...]
 
 ### System Prompt (Strict Grounding)
 
+### System Prompt (Patient Grounding)
+
 ```
 You are a clinical assistant AI helping a doctor review patient medical history.
+Before answering, write your step-by-step reasoning inside <think>...</think> tags. Then give your final answer.
 
 STRICT RULES:
 1. Answer ONLY from the patient data provided below. Do not use outside knowledge.
@@ -194,15 +201,38 @@ Patient: Ahmad Hassan, DOB: 1978-04-12, Gender: Male, Blood Type: O+
   [2] Penicillin → Anaphylaxis (severe)
 ```
 
-### Streaming
+### Streaming & Reasoning Parser
 
-The LLM response is streamed token-by-token using `client.chat.completions.create(stream=True)`. The WebSocket router forwards each chunk immediately to the browser, achieving low perceived latency (first token appears within ~0.5 seconds).
+The LLM response is streamed token-by-token. To support MedGemma 1.5's native clinical reasoning model output alongside standard instruction-tuned reasoning models (like DeepSeek R1), the backend implements an advanced stateful stream parser (`stream_with_thinking`) in the WebSocket router (`chat.py`) and equivalent logic in the multi-modal endpoint (`uploads.py`). 
+
+This parser dynamically filters the token stream and separates reasoning from the final answer by supporting three distinct token/text styles:
+
+1. **MedGemma 1.5 Special Tokens:**
+   - **Start of Thought:** The `<unused94>` token (which MedGemma 1.5 prefixes to its thinking process). When detected, the parser initiates a `think_start` event.
+   - **End of Thought:** The `<unused95>` token (which separates the reasoning block from the final clinical answer). When detected, the parser broadcasts a `think_done` event (with exact thinking duration in seconds) and routes subsequent tokens to the standard final answer channel.
+2. **Standard XML-style Tags:**
+   - Triggers `think_start` when `<think>` is received.
+   - Triggers `think_done` when `</think>` is received.
+3. **Text-based thought prefixes:**
+   - Triggers `think_start` when the response starts with the case-insensitive keyword `thought ` (common in models that formulate their reasoning in paragraphs).
+
+#### Robust Buffering and Prefix Handling
+To prevent tag fragmentation (where brackets like `<` or incomplete tags like `<un` are split across multiple tokens and escape detection), the stream parser holds partial characters in a temporary buffer. If the buffer is a prefix of one of the close tags (`</think>`, `<unused95>`, etc.) or starting tokens (`<unused94>`, `thought`), it continues buffering. As soon as a match or mismatch is confirmed, it either fires the control events or flushes the buffer to the active stream channel.
 
 **Model configuration:**
-- OpenAI backend: `gpt-4o` (highest quality generation)
-- Ollama backend: `llama3.2`
+- Ollama backend (default): `medgemma1.5:latest`
+- OpenAI backend (legacy): `gpt-4o`
 - Temperature: `0.2` (slight variation but mostly deterministic)
-- Max tokens: `800`
+- Max tokens: `1024`
+
+---
+
+## 5.6 Multi-Modal Image Analysis
+
+**File:** `backend/routers/uploads.py`
+
+MedGemma 1.5 supports vision. The `/api/chat/analyze-image` endpoint accepts `multipart/form-data` containing an image and a specific prompt category (`xray`, `ct_mri`, `lab_report`, `handwritten`, `dermatology`, `general`).
+The image is base64-encoded and sent to Ollama's OpenAI-compatible multi-modal API. The response is streamed back using **Server-Sent Events (SSE)**, which employs the exact same `<think>` parsing logic as the WebSocket connection.
 
 ---
 
@@ -213,7 +243,7 @@ The same OpenAI client SDK is used for both backends. Ollama exposes an OpenAI-c
 ```bash
 # .env configuration
 LLM_BACKEND=ollama       # or: openai
-OLLAMA_MODEL=llama3.2    # model name in Ollama
+OLLAMA_MODEL=medgemma1.5:latest    # model name in Ollama
 OPENAI_API_KEY=sk-...    # only needed for openai backend
 ```
 

@@ -8,7 +8,7 @@
 
 ## 1.2 Abstract
 
-This project presents a conversational AI system designed to allow doctors to query comprehensive patient medical records using natural language. The system combines a **FastAPI** backend, a **PostgreSQL** relational database, and a multi-stage **LLM pipeline** (Intent Classification → Named Entity Recognition → Database Retrieval → Answer Generation) to produce accurate, source-cited clinical responses in real time via WebSocket streaming.
+This project presents a conversational AI system designed to allow doctors to query comprehensive patient medical records using natural language. The system combines a **FastAPI** backend, a **PostgreSQL** relational database, and a multi-stage **LLM pipeline** (Intent Classification → Named Entity Recognition → Database Retrieval → Answer Generation) to produce accurate, source-cited clinical responses in real time via WebSocket streaming. It is powered by **MedGemma 1.5**, an advanced medical LLM capable of multi-modal analysis (OCR, X-Rays, MRI) and explicit step-by-step clinical reasoning.
 
 The dataset is sourced from **Synthea**, a synthetic patient data generator widely used in academic medical AI research, ensuring realistic clinical data without compromising any real patient privacy.
 
@@ -33,9 +33,10 @@ Current EHR interfaces require multiple clicks across different modules. This pr
 | 2 | Classify doctor queries into one of 8 clinical intent categories |
 | 3 | Extract medical entities (drugs, conditions, date ranges, lab tests) from free-text queries |
 | 4 | Retrieve targeted patient records from PostgreSQL based on intent + entities |
-| 5 | Generate grounded, source-cited answers using an LLM (OpenAI GPT-4o or local Ollama Llama 3.2) |
-| 6 | Stream responses in real time via WebSocket for low perceived latency |
-| 7 | Support both cloud (OpenAI) and fully local (Ollama) LLM backends |
+| 5 | Generate grounded, source-cited answers using an LLM (MedGemma 1.5 via Ollama) |
+| 6 | Stream responses in real time via WebSocket with background `<think>` tag parsing |
+| 7 | Support multi-modal image analysis for Chest X-Rays, CT/MRI, Lab Reports, and handwritten notes |
+| 8 | Provide a general medical chat mode independent of patient context |
 
 ---
 
@@ -46,8 +47,9 @@ Current EHR interfaces require multiple clicks across different modules. This pr
 - JWT Bearer token with configurable expiry
 - All patient data endpoints require a valid token
 
-### 👥 Patient Management
-- List all patients with live search by name
+### 👥 Patient Management (Patient Hub)
+- 3-Tab interface: Recent (instant access), Browse (visual cards with filters), and Search
+- Filter patients dynamically by Gender and Blood Type
 - Register new patients via modal form
 - View full patient history (diagnoses, medications, labs, allergies, visits)
 
@@ -56,13 +58,15 @@ Current EHR interfaces require multiple clicks across different modules. This pr
 - **Named Entity Recognition** — Extracts structured entities from free-text (drugs, conditions, labs, date ranges)
 - **Smart Retrieval** — Queries only the relevant database table(s) with extracted filters
 - **LLM Answer Generation** — Strictly grounded answer with citations; flags abnormal labs and dangerous combinations
-- **Real-time Streaming** — WebSocket delivery of tokens for instant feedback
+- **Real-time Streaming & Reasoning** — WebSocket delivery of tokens, including an expandable Claude-style `<think>` UI for background reasoning
+- **Multi-Modal Imaging** — Upload medical images for direct analysis by MedGemma 1.5
+- **General Medical Mode** — Bypass patient context for direct medical knowledge queries
 
 ### 📊 Dual LLM Support
 | Backend | Models | Use Case |
 |---------|--------|----------|
-| OpenAI | `gpt-4o` (generation), `gpt-4o-mini` (classification/NER) | Cloud deployment |
-| Ollama | `llama3.2` (all tasks) | Local / air-gapped deployment |
+| Ollama | `medgemma1.5:latest` (all tasks + vision) | Default local / air-gapped deployment |
+| OpenAI | `gpt-4o` (generation), `gpt-4o-mini` | Legacy cloud deployment |
 
 ### 🏥 Dataset
 - **Source**: Synthea synthetic patient generator

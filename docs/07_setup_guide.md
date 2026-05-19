@@ -23,9 +23,9 @@ cd "/media/omar/Graduation Project/GP/Project"
 ### Step 2 — Create and activate a Python virtual environment
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate        # Linux/macOS
-# venv\Scripts\activate.bat     # Windows
+```bash
+conda create -n medical_chatbot python=3.10 -y
+conda activate medical_chatbot
 ```
 
 ### Step 3 — Install Python dependencies
@@ -56,7 +56,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 # LLM backend: 'ollama' (local) or 'openai' (cloud)
 LLM_BACKEND=ollama
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=medgemma1.5:latest
 ```
 
 ---
@@ -131,8 +131,9 @@ python -m backend.fix_blood_types
 ## 7.6 Running the Backend
 
 ```bash
+```bash
 cd "/media/omar/Graduation Project/GP/Project"
-source venv/bin/activate
+conda activate medical_chatbot
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -173,8 +174,8 @@ python -m http.server 3000
 # Install Ollama
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Pull the model (one-time download ~2GB)
-ollama pull llama3.2
+# Pull the model (requires ~3.5GB)
+ollama pull medgemma1.5:latest
 
 # Start the Ollama service (runs on :11434)
 ollama serve
@@ -241,10 +242,11 @@ gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | `psycopg2.OperationalError` | PostgreSQL not running | `sudo service postgresql start` |
+| `500 Internal Server Error` on Login | `passlib` bcrypt limit bug | Run `pip install bcrypt==4.0.1` |
 | `401 Unauthorized` on all requests | JWT expired or missing | Re-login in the browser |
 | WebSocket refuses connection | Backend not running | Check `uvicorn` process |
-| LLM timeout | Ollama model not loaded | Run `ollama pull llama3.2` |
-| `ImportError` | Virtual env not activated | `source venv/bin/activate` |
+| LLM timeout | Ollama model not loaded | Run `ollama pull medgemma1.5:latest` |
+| `ImportError` | Conda env not activated | `conda activate medical_chatbot` |
 | Blank patient list | DB empty | Run `python -m backend.seed` |
 
 ---
