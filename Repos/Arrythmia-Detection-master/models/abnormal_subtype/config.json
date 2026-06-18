@@ -1,0 +1,14 @@
+{
+  "epochs": 50,
+  "batch_size": 64,
+  "lr": 0.001,
+  "weight_decay": 0.0001,
+  "seed": 42,
+  "num_workers": 0,
+  "patience": 10,
+  "output_dir": "runs\\fixed_all_datasets_abnormal_only",
+  "device": "cuda",
+  "resume": null,
+  "base_dir": "C:\\GP\\Arrythmia\\Attention_Based_Model",
+  "task": "abnormal_only_all_datasets_4class"
+}

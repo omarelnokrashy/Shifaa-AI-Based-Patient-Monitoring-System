@@ -19,6 +19,7 @@
 | [07_setup_guide.md](07_setup_guide.md) | Installation, configuration & deployment guide |
 | [08_benchmarks_and_evaluation.md](08_benchmarks_and_evaluation.md) | Academic benchmarks and evaluation results |
 | [09_dataset_description.md](09_dataset_description.md) | Synthea dataset description and import process |
+| [10_integration_and_troubleshooting.md](10_integration_and_troubleshooting.md) | Integration log, debug diagnostics, and styling adjustments |
 
 ## 🧪 Test Suite
 

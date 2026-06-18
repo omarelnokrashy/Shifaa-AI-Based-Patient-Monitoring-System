@@ -8,7 +8,7 @@ The system follows a **3-tier architecture**: Frontend → Backend API → Datab
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           DOCTOR'S BROWSER                                  │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                   Single Page Application (HTML/JS)                 │   │
+│   │                   Single Page Application (React / Vite)            │   │
 │   │  Login → Patient Search → Chat Interface (WebSocket streaming)      │   │
 │   │  + Alert Notification Panel  + ECG / Vitals Live Dashboard          │   │
 │   └────────────────────────┬────────────────────────────────────────────┘   │
@@ -256,8 +256,9 @@ Project/
 │       ├── ner.py               # LLM-based medical NER (5 entity types)
 │       ├── retriever.py         # Intent-aware PostgreSQL query builder
 │       └── llm.py               # LLM answer generation with strict grounding prompt
-├── frontend/
-│   └── index.html               # Self-contained SPA (login, patient list, chat UI)
+├── frontend-react/
+│   ├── src/                     # React + Vite + Zustand components
+│   └── index.html               # SPA Entry point
 ├── docs/                        # 📚 This documentation folder
 │   ├── README.md
 │   ├── 01_project_overview.md
@@ -307,7 +308,7 @@ Project/
          │                         ├──► PostgreSQL :5432
          │                         └──► Ollama :11434 (local LLM)
          │
-         └──► /*  ──► Static file serving (index.html)
+         └──► /*  ──► Static file serving (compiled /dist assets)
 ```
 
 ---

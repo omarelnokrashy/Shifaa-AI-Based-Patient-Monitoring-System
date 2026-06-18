@@ -148,23 +148,46 @@ curl http://localhost:8000/
 
 ---
 
-## 7.7 Running the Frontend
+## 7.7 Running the Frontend (React + Vite)
 
-The frontend is a static HTML file. Three options:
+The frontend is built as a React single page application, requiring **Node.js (v18+)** and **npm**.
 
-**Option A — Open directly in browser:**
+### Step 1 — Install Node.js inside the Conda Environment
+To keep your system clean, install Node.js and npm directly into your active Conda environment:
 ```bash
-xdg-open "/media/omar/Graduation Project/GP/Project/frontend/index.html"
+conda activate medical_chatbot
+conda install -c conda-forge nodejs -y
 ```
 
-**Option B — Serve with Python's HTTP server:**
+### Step 2 — Configure the Frontend Environment variables
+Create a `.env` file inside the `frontend-react` folder:
 ```bash
-cd "/media/omar/Graduation Project/GP/Project/frontend"
-python -m http.server 3000
-# Open: http://localhost:3000
+cd "/media/omar/Graduation Project/GP/Project/frontend-react"
+cp .env.example .env
+```
+Ensure the configuration parameters are set correctly:
+*   `VITE_API_URL`: Backend REST endpoint (`http://localhost:8000`)
+*   `VITE_WS_URL`: Backend WebSocket URL (`ws://localhost:8000`)
+*   `VITE_DATA_MODE`: Set to `mock` for standalone testing (uses simulated pipelines), or `live` to connect to the actual FastAPI backend.
+
+### Step 3 — Install Dependencies & Start Dev Server
+```bash
+# Install NPM modules
+npm install
+
+# Start Vite Development Server (usually binds to http://localhost:5173)
+npm run dev
 ```
 
-**Option C — Use Nginx or any static file server**
+### Step 4 — Build & Preview Production Bundle (Optional)
+To check the production optimization compile or serve optimized static assets:
+```bash
+# Compile and build the React bundles inside /dist
+npm run build
+
+# Preview the built production site locally
+npm run preview
+```
 
 ---
 

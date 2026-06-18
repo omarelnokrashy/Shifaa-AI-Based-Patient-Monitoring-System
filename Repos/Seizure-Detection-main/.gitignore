@@ -1,0 +1,7 @@
+runtime_outputs/
+sample_videos/*.mp4
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
