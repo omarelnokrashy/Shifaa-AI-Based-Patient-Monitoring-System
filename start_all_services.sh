@@ -45,14 +45,16 @@ else
 fi
 
 # ── Helper to pick the right Python interpreter ───────────────────────────────
+# Prefer a repo-local .venv, then fall back to the conda-env Python (which has
+# the correct numpy/torch versions), never to /usr/bin/python3 (system).
+CONDA_PYTHON="$(command -v python3 || echo python3)"
 python_for() {
     local repo_dir="$1"
     local venv_py="$repo_dir/.venv/bin/python"
     if [[ -x "$venv_py" ]]; then
         echo "$venv_py"
     else
-        echo "python3"
-        echo "[!] WARNING: No venv found at $repo_dir/.venv — using system python3" >&2
+        echo "$CONDA_PYTHON"
     fi
 }
 
