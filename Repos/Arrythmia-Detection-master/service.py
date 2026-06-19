@@ -33,6 +33,7 @@ from __future__ import annotations
 import os
 import sys
 import logging
+import pathlib
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -41,6 +42,10 @@ import numpy as np
 import torch
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+
+# Patch WindowsPath on non-Windows systems to load models serialized on Windows
+if os.name != 'nt':
+    pathlib.WindowsPath = pathlib.PosixPath
 
 # ── Path setup ──────────────────────────────────────────────────────────────
 # Add the repo's own src/ to sys.path so `from model import build_model` works.
