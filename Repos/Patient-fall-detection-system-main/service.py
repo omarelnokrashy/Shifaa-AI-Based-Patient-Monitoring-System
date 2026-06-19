@@ -41,6 +41,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+# Prevent the `transformers` package (pulled in indirectly by ultralytics/timm)
+# from disabling PyTorch when it detects a version older than 2.4.
+# This service does NOT use HuggingFace models, so this is safe.
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import cv2
 import mediapipe as mp
 import numpy as np
