@@ -73,6 +73,7 @@ ARR_DIR="$PROJECT_ROOT/Repos/Arrythmia-Detection-master"
 ARR_PY="$(python_for "$ARR_DIR")"
 echo "[1/4] Starting arrhythmia service on port $ARR_PORT ..."
 PORT=$ARR_PORT "$ARR_PY" -m uvicorn service:app \
+    --app-dir "$ARR_DIR" \
     --host 0.0.0.0 \
     --port "$ARR_PORT" \
     --no-access-log \
@@ -85,6 +86,7 @@ FALL_DIR="$PROJECT_ROOT/Repos/Patient-fall-detection-system-main"
 FALL_PY="$(python_for "$FALL_DIR")"
 echo "[2/4] Starting fall detection service on port $FALL_PORT ..."
 PORT=$FALL_PORT "$FALL_PY" -m uvicorn service:app \
+    --app-dir "$FALL_DIR" \
     --host 0.0.0.0 \
     --port "$FALL_PORT" \
     --no-access-log \
@@ -97,6 +99,7 @@ SEIZ_DIR="$PROJECT_ROOT/Repos/Seizure-Detection-main"
 SEIZ_PY="$(python_for "$SEIZ_DIR")"
 echo "[3/4] Starting seizure detection service on port $SEIZ_PORT ..."
 PORT=$SEIZ_PORT "$SEIZ_PY" -m uvicorn service:app \
+    --app-dir "$SEIZ_DIR" \
     --host 0.0.0.0 \
     --port "$SEIZ_PORT" \
     --no-access-log \
