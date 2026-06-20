@@ -241,11 +241,22 @@ All relationships use SQLAlchemy's lazy loading by default. When `PatientFullOut
 ## 4.4 Indexing Strategy
 
 | Table | Indexed Columns | Reason |
-|-------|-----------------|--------|
+| :--- | :--- | :--- |
 | `patients` | `id` (PK) | All joins use patient_id |
 | `doctors` | `id` (PK), `email` | Login lookup by email |
 | `lab_results` | `test_date` | Date range filtering |
 | `medications` | `is_active` | Most queries filter active only |
+
+---
+
+## 4.5 Doctor-Patient Assignment & Isolation
+
+To comply with patient privacy regulations and clinical workflows, patient access is restricted based on assignment:
+1. **Assignment Criteria:** A patient is considered assigned to a doctor if there is at least one record in the `visits` table linking the doctor (`doctor_id`) and the patient (`patient_id`).
+2. **Access Control Filtering:**
+   - **List Patients:** When a user with the `doctor` role queries `/api/patients`, the query dynamically joins the `visits` table and filters by `Visit.doctor_id == doctor.id`.
+   - **Patient Details and Medical History:** Requests for specific patient history (medications, labs, diagnoses) verify that the doctor has an associated visit record for that patient. If not, the API returns a `403 Access Denied` or `404 Not Found` response.
+   - **Nurse and Admin Roles:** Users authenticated as `nurse` or `admin` are exempt from this filter and can access all patient records globally for triage and system management.
 
 ---
 

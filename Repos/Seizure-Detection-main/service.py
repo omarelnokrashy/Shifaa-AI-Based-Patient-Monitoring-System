@@ -137,18 +137,38 @@ class SeizureSession:
             log.warning(f"[{self.session_id}] Alert CSV never appeared; subprocess may have crashed.")
             return
 
-        with open(self.alert_log, newline="", encoding="utf-8") as fh:
-            reader = csv.DictReader(fh)
+        with open(self.alert_log, "r", encoding="utf-8", errors="ignore") as fh:
+            # Read header
+            header_line = fh.readline()
+            while not header_line and not self._stop_event.is_set():
+                fh.seek(fh.tell())
+                time.sleep(0.2)
+                header_line = fh.readline()
+
+            if self._stop_event.is_set():
+                return
+
+            header_reader = csv.reader([header_line])
+            fieldnames = next(header_reader)
+
             while not self._stop_event.is_set():
-                for row in reader:
-                    if self._stop_event.is_set():
-                        break
-                    event = _csv_row_to_event(row)
-                    self.last_event = event
-                    asyncio.run_coroutine_threadsafe(
-                        self._broadcast(event), _event_loop
-                    )
-                time.sleep(0.2)  # poll interval
+                line = fh.readline()
+                if not line:
+                    fh.seek(fh.tell())
+                    time.sleep(0.2)
+                    continue
+
+                try:
+                    row_values = next(csv.reader([line]))
+                    if len(row_values) >= len(fieldnames):
+                        row = dict(zip(fieldnames, row_values))
+                        event = _csv_row_to_event(row)
+                        self.last_event = event
+                        asyncio.run_coroutine_threadsafe(
+                            self._broadcast(event), _event_loop
+                        )
+                except Exception as exc:
+                    log.warning(f"Error parsing CSV line: {exc}")
 
     async def _broadcast(self, event: dict):
         """Send an event to all currently connected WebSocket clients."""

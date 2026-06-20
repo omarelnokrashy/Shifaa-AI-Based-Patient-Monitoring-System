@@ -1,3 +1,10 @@
+/**
+ * LoginPage.jsx — public authentication screen.
+ *
+ * Renders a two-panel layout (brand panel on desktop, login form on the right).
+ * On successful login the JWT is stored via `useAuthStore` and the user is
+ * redirected to their role-appropriate dashboard using `ROLE_REDIRECT`.
+ */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HeartPulse, Eye, EyeOff, ShieldCheck } from 'lucide-react'
@@ -6,12 +13,27 @@ import { apiLogin } from '../../api/client'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 
+/**
+ * Maps each user role to its landing dashboard route.
+ * Used after a successful login to navigate the user to the correct section.
+ *
+ * @type {Record<'doctor'|'nurse'|'admin', string>}
+ */
 const ROLE_REDIRECT = {
   doctor: '/doctor/dashboard',
   nurse:  '/nurse/dashboard',
   admin:  '/admin/dashboard',
 }
 
+/**
+ * Login page component.
+ *
+ * Manages local form state (email, password, show/hide password, loading,
+ * and error). Calls `apiLogin`, stores the returned JWT with `useAuthStore`,
+ * then navigates the user to the dashboard matching their decoded role.
+ *
+ * @returns {JSX.Element} The full login page.
+ */
 export default function LoginPage() {
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -22,6 +44,16 @@ export default function LoginPage() {
   const login    = useAuthStore((s) => s.login)
   const navigate = useNavigate()
 
+  /**
+   * Handles login form submission.
+   *
+   * Prevents the default form action, calls the `apiLogin` API, stores the
+   * token, then redirects to the user's home dashboard. Sets an error message
+   * if the request fails.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submit event.
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')

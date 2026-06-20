@@ -30,6 +30,8 @@ import DoctorDashboard    from './pages/doctor/DoctorDashboard'
 import PatientListPage    from './pages/doctor/PatientListPage'
 import PatientDetailPage  from './pages/doctor/PatientDetailPage'
 import LiveMonitoringPage from './pages/doctor/LiveMonitoringPage'
+import SandboxTestPage    from './pages/doctor/SandboxTestPage'
+
 
 // Nurse
 import NurseDashboard from './pages/nurse/NurseDashboard'
@@ -39,6 +41,19 @@ import AdminDashboard    from './pages/admin/AdminDashboard'
 import UserManagementPage from './pages/admin/UserManagementPage'
 
 // ── Role guard ────────────────────────────────────────────────────────────────
+/**
+ * Route guard that enforces role-based access control.
+ *
+ * Behaviour:
+ *  - If there is no authenticated user, redirects to `/login`.
+ *  - If the authenticated user's role does not match `allowedRole`, redirects
+ *    them to their own role's home dashboard.
+ *  - Otherwise renders the nested child routes via `<Outlet />`.
+ *
+ * @param {object} props
+ * @param {'doctor'|'nurse'|'admin'} props.allowedRole - The role permitted to access the nested routes.
+ * @returns {JSX.Element} A redirect or the child `<Outlet />`.
+ */
 function RoleGuard({ allowedRole }) {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />
@@ -51,6 +66,14 @@ function RoleGuard({ allowedRole }) {
 }
 
 // ── Root redirect ──────────────────────────────────────────────────────────────
+/**
+ * Handles navigation from the root `/` path.
+ *
+ * Redirects unauthenticated visitors to `/login` and sends authenticated users
+ * to their role-specific dashboard (doctor → `/doctor/dashboard`, etc.).
+ *
+ * @returns {JSX.Element} A `<Navigate>` element pointing to the correct destination.
+ */
 function RootRedirect() {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />
@@ -59,6 +82,15 @@ function RootRedirect() {
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
+/**
+ * Root application component.
+ *
+ * Declares the full React Router `<Routes>` tree, combining public routes,
+ * role-guarded doctor/nurse/admin sections, and a 404 catch-all redirect.
+ * Must be rendered inside a `<BrowserRouter>` (see main.jsx).
+ *
+ * @returns {JSX.Element} The application route tree.
+ */
 export default function App() {
   return (
     <Routes>
@@ -73,6 +105,8 @@ export default function App() {
           <Route path="/doctor/patients"             element={<PatientListPage />} />
           <Route path="/doctor/patients/:id"         element={<PatientDetailPage />} />
           <Route path="/doctor/monitoring"           element={<LiveMonitoringPage />} />
+          <Route path="/doctor/sandbox"              element={<SandboxTestPage />} />
+
         </Route>
       </Route>
 

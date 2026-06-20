@@ -8,6 +8,15 @@ import Card, { CardHeader } from '../../components/ui/Card'
 import { apiGetDashboard, apiGetUsers } from '../../api/client'
 import { clsx } from 'clsx'
 
+/**
+ * Admin System Dashboard page.
+ *
+ * Fetches backend service health (main, arrhythmia, fall, seizure services)
+ * and the user roster on mount. Refreshes service health every 15 seconds.
+ * Renders a 4-card service health grid and a 3-cell user/activity summary row.
+ *
+ * @returns {JSX.Element} The admin system dashboard.
+ */
 export default function AdminDashboard() {
   const [health, setHealth] = useState({})
   const [users,  setUsers]  = useState([])
@@ -30,6 +39,12 @@ export default function AdminDashboard() {
     { key: 'seizure',     label: 'Seizure Detection',     port: 8003 },
   ]
 
+  /**
+   * Counts the number of active users with the given role.
+   *
+   * @param {'doctor'|'nurse'|'admin'} role - The role to filter by.
+   * @returns {number} The count of active users with that role.
+   */
   const roleCount = (role) => users.filter((u) => u.role === role && u.is_active).length
 
   return (

@@ -41,26 +41,27 @@ The API documentation will be available at [http://localhost:8000/docs](http://l
 
 ### 4. Run the Frontend
 
-The frontend is a self-contained SPA. You can open it directly or serve it:
-
-**Option A: Open directly**
-Open `frontend/index.html` in any modern web browser.
-
-**Option B: Serve via Python**
+The frontend is a modern React SPA. Make sure Node.js is installed (Conda environment-friendly), then start the HMR development server:
 
 ```bash
-cd frontend
-python3 -m http.server 3000
+# Navigate to the frontend-react directory
+cd frontend-react
+
+# Install packages
+npm install
+
+# Run Vite dev server
+npm run dev
 ```
 
-Then visit [http://localhost:3000](http://localhost:3000).
+Then visit [http://localhost:5173](http://localhost:5173).
 
 ---
 
 ## 🛠 Project Structure
 
 - `backend/`: FastAPI application, database models, and AI services (including LLM integration).
-- `frontend/`: Multi-modal HTML/JS/CSS clinical chat interface featuring a Patient Hub, Image Uploads, and a Claude-style Thinking UI.
+- `frontend-react/`: Modern React 18 / Vite / Tailwind CSS clinical dashboard featuring state management via Zustand, SVG ECG charts, and real-time WebSocket telemetry.
 - `docs/`: Comprehensive documentation, system architecture, and academic benchmarks.
 - `Data/`: Synthea synthetic patient dataset.
 

@@ -1,3 +1,11 @@
+"""
+main.py — FastAPI application entry point
+==========================================
+Initialises the FastAPI app, applies CORS middleware, and registers all
+application routers (auth, patients, chat, uploads, users, arrhythmia,
+monitoring, and dashboard).  Database tables are created automatically on
+startup via SQLAlchemy's ``create_all``.
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
@@ -40,6 +48,7 @@ app.include_router(dashboard.router)      # GET /api/dashboard/summary
 
 @app.get("/")
 def root():
+    """Return a brief status message confirming the API is running."""
     return {
         "message": "Medical Monitoring System API is running",
         "docs": "/docs",

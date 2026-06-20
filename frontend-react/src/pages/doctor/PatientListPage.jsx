@@ -13,13 +13,26 @@ import Modal from '../../components/ui/Modal'
 import { apiGetPatients, apiCreatePatient } from '../../api/client'
 import { calcAge, formatDate } from '../../components/utils/time'
 import { clsx } from 'clsx'
+import useAuthStore from '../../store/authStore'
 
+/**
+ * Patient List page component.
+ *
+ * Renders a searchable, paginated table of all patients. Debounces the search
+ * input so the API is only called when the query changes. Provides an "Add
+ * Patient" button that opens `AddPatientModal` and prepends the newly created
+ * patient to the list on success.
+ *
+ * @returns {JSX.Element} The patient list table page.
+ */
 export default function PatientListPage() {
   const navigate = useNavigate()
   const [patients, setPatients] = useState([])
   const [search,   setSearch]   = useState('')
   const [loading,  setLoading]  = useState(true)
   const [showAdd,  setShowAdd]  = useState(false)
+  const user = useAuthStore((s) => s.user)
+  const basePath = user?.role === 'nurse' ? '/nurse' : '/doctor'
 
   useEffect(() => {
     setLoading(true)
@@ -64,7 +77,7 @@ export default function PatientListPage() {
                   <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-6 bg-navy-100 rounded animate-pulse" /></td></tr>
                 ))
               : patients.map((p) => (
-                  <PatientRow key={p.id} patient={p} onClick={() => navigate(`/doctor/patients/${p.id}`)} />
+                  <PatientRow key={p.id} patient={p} onClick={() => navigate(`${basePath}/patients/${p.id}`)} />
                 ))
             }
           </tbody>
@@ -84,6 +97,18 @@ export default function PatientListPage() {
   )
 }
 
+/**
+ * Table row representing a single patient with quick-stat indicators.
+ *
+ * Displays the patient avatar, name, ID, age/gender, blood type, active
+ * diagnosis count, and flag icons for abnormal lab results or allergies.
+ * Clicking anywhere on the row triggers `onClick`.
+ *
+ * @param {object}   props
+ * @param {object}   props.patient - Patient object from the API.
+ * @param {Function} props.onClick - Callback invoked when the row is clicked.
+ * @returns {JSX.Element}
+ */
 function PatientRow({ patient, onClick }) {
   const abnormalLabs = (patient.lab_results || []).filter((l) => l.is_abnormal).length
   const activeDxCount = (patient.diagnoses || []).filter((d) => d.is_active).length
@@ -140,12 +165,43 @@ function PatientRow({ patient, onClick }) {
   )
 }
 
+/**
+ * Modal dialog for registering a new patient.
+ *
+ * Controls a controlled form with name, date of birth, gender, blood type,
+ * and phone fields. On successful submission calls `onCreated` with the
+ * newly created patient object so the parent can prepend it to the list.
+ *
+ * @param {object}   props
+ * @param {boolean}  props.isOpen    - Whether the modal is visible.
+ * @param {Function} props.onClose   - Callback to close the modal without saving.
+ * @param {Function} props.onCreated - Callback invoked with the new patient after creation.
+ * @returns {JSX.Element}
+ */
 function AddPatientModal({ isOpen, onClose, onCreated }) {
   const [form, setForm] = useState({ name: '', dob: '', gender: 'Male', blood_type: 'O+', phone: '' })
   const [loading, setLoading] = useState(false)
 
+  /**
+   * Curried field-setter factory for the controlled form.
+   *
+   * Returns a change-event handler that updates the named `field` in the
+   * `form` state object while preserving all other field values.
+   *
+   * @param {string} field - The form field key to update.
+   * @returns {Function} An `onChange` handler compatible with input elements.
+   */
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
+  /**
+   * Handles the "Register" form submission.
+   *
+   * Calls `apiCreatePatient` with the current form state and, on success,
+   * forwards the returned patient object to `onCreated`.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submit event.
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)

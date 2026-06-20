@@ -1,3 +1,24 @@
+"""
+Patient record retriever
+-------------------------
+SQL data-access layer that translates a classified intent and extracted NER
+entities into concrete SQLAlchemy queries against the medical-history database.
+
+The module exposes a single public function, :func:`retrieve`, which is called by
+the chat router after intent classification and NER extraction.  It returns a
+``(records, sources)`` tuple that is handed directly to the LLM service for
+prompt construction.
+
+Supported intents and the tables they query:
+  - ``medication_check``  → Medication
+  - ``lab_results``       → LabResult  (supports date-range and test-name filters)
+  - ``allergy_check``     → Allergy
+  - ``visit_summary``     → Visit      (supports date-range and limit filters)
+  - ``diagnosis_check``   → Diagnosis  (supports condition keyword filter)
+  - ``history_lookup`` /
+    ``risk_flag``         → Diagnosis + Medication + LabResult + Allergy (aggregate)
+"""
+
 from sqlalchemy.orm import Session
 from .. import models
 from datetime import date, timedelta

@@ -4,7 +4,7 @@
 
 The AI pipeline processes every chat message through four sequential stages. Each stage uses structured LLM output (JSON mode) or rule-based SQL query building to ensure determinism and accuracy.
 
-```
+```text
 Doctor Query
      │
      ▼
@@ -36,6 +36,7 @@ Doctor Query
 ```
 
 **Alternative Flows:**
+
 - **General Medical Mode:** Bypasses Stages 1-3. Doctor query goes straight to Stage 4 using a general medical system prompt.
 - **Image Upload:** Bypasses WebSocket. Uses a standard HTTP POST with SSE (Server-Sent Events) streaming to process base64 multi-modal images alongside a text query.
 
@@ -48,7 +49,7 @@ Doctor Query
 ### Supported Intents
 
 | Intent | Description | Example Query |
-|--------|-------------|---------------|
+| :--- | :--- | :--- |
 | `history_lookup` | General medical history | "What is the patient's medical background?" |
 | `medication_check` | Current prescriptions | "What drugs is this patient on?" |
 | `lab_results` | Laboratory test values | "Show me the last HbA1c result" |
@@ -58,7 +59,7 @@ Doctor Query
 | `risk_flag` | Abnormal findings/risk | "Are there any concerning findings?" |
 | `general_question` | General clinical knowledge | "What's the normal range for HbA1c?" |
 
-### Implementation
+### Stage 1 Implementation
 
 ```python
 # System prompt enforces JSON output with only valid intent values
@@ -74,6 +75,7 @@ Return ONLY valid JSON.
 ```
 
 **Model configuration:**
+
 - Ollama backend (default): `medgemma1.5:latest`
 - OpenAI backend (legacy): `gpt-4o-mini`
 - Temperature: `0.0` (deterministic)
@@ -90,14 +92,14 @@ Return ONLY valid JSON.
 ### Extracted Entity Types
 
 | Entity | Description | Example |
-|--------|-------------|---------|
+| :--- | :--- | :--- |
 | `date_range` | Temporal scope | "last 3 months", "2024", "this year" |
 | `condition` | Medical condition | "diabetes", "hypertension" |
 | `drug` | Medication name | "metformin", "aspirin" |
 | `lab_test` | Laboratory test name | "HbA1c", "creatinine" |
 | `limit` | Numeric limit | 3 (from "last 3 visits") |
 
-### Implementation
+### Stage 2 Implementation
 
 ```python
 NER_SYSTEM = """
@@ -115,6 +117,7 @@ Return ONLY valid JSON.
 ```
 
 **Example:**
+
 - Input: `"Show me HbA1c results from the last 3 months"`
 - Output: `{"date_range": "last 3 months", "condition": null, "drug": null, "lab_test": "HbA1c", "limit": null}`
 
@@ -129,7 +132,7 @@ The retriever maps each intent to one or more database queries, applying entity-
 ### Retrieval Strategy by Intent
 
 | Intent | Table(s) Queried | Filters Applied |
-|--------|-----------------|-----------------|
+| :--- | :--- | :--- |
 | `medication_check` | `medications` | drug name (ilike), is_active=True |
 | `lab_results` | `lab_results` | test_name (ilike), test_date >= cutoff, LIMIT |
 | `allergy_check` | `allergies` | patient_id only |
@@ -143,7 +146,7 @@ The retriever maps each intent to one or more database queries, applying entity-
 
 The `_parse_date_range()` function converts natural language temporal expressions to a cutoff `date`:
 
-```
+```text
 "last 3 months"  → today - 90 days
 "last 2 years"   → today - 730 days
 "last week"      → today - 7 days
@@ -164,11 +167,9 @@ sources = ["Lab #12: HbA1c = 8.1 % on 2025-11-20", ...]
 
 **File:** `backend/services/llm.py`
 
-### System Prompt (Strict Grounding)
-
 ### System Prompt (Patient Grounding)
 
-```
+```text
 You are a clinical assistant AI helping a doctor review patient medical history.
 Before answering, write your step-by-step reasoning inside <think>...</think> tags. Then give your final answer.
 
@@ -185,7 +186,7 @@ STRICT RULES:
 
 Before calling the LLM, patient data is formatted into a structured text block:
 
-```
+```text
 Patient: Ahmad Hassan, DOB: 1978-04-12, Gender: Male, Blood Type: O+
 
 --- DIAGNOSES ---
@@ -203,7 +204,7 @@ Patient: Ahmad Hassan, DOB: 1978-04-12, Gender: Male, Blood Type: O+
 
 ### Streaming & Reasoning Parser
 
-The LLM response is streamed token-by-token. To support MedGemma 1.5's native clinical reasoning model output alongside standard instruction-tuned reasoning models (like DeepSeek R1), the backend implements an advanced stateful stream parser (`stream_with_thinking`) in the WebSocket router (`chat.py`) and equivalent logic in the multi-modal endpoint (`uploads.py`). 
+The LLM response is streamed token-by-token. To support MedGemma 1.5's native clinical reasoning model output alongside standard instruction-tuned reasoning models (like DeepSeek R1), the backend implements an advanced stateful stream parser (`stream_with_thinking`) in the WebSocket router (`chat.py`) and equivalent logic in the multi-modal endpoint (`uploads.py`).
 
 This parser dynamically filters the token stream and separates reasoning from the final answer by supporting three distinct token/text styles:
 
@@ -214,12 +215,14 @@ This parser dynamically filters the token stream and separates reasoning from th
    - Triggers `think_start` when `<think>` is received.
    - Triggers `think_done` when `</think>` is received.
 3. **Text-based thought prefixes:**
-   - Triggers `think_start` when the response starts with the case-insensitive keyword `thought ` (common in models that formulate their reasoning in paragraphs).
+   - Triggers `think_start` when the response starts with the case-insensitive keyword `thought` (common in models that formulate their reasoning in paragraphs).
 
 #### Robust Buffering and Prefix Handling
+
 To prevent tag fragmentation (where brackets like `<` or incomplete tags like `<un` are split across multiple tokens and escape detection), the stream parser holds partial characters in a temporary buffer. If the buffer is a prefix of one of the close tags (`</think>`, `<unused95>`, etc.) or starting tokens (`<unused94>`, `thought`), it continues buffering. As soon as a match or mismatch is confirmed, it either fires the control events or flushes the buffer to the active stream channel.
 
 **Model configuration:**
+
 - Ollama backend (default): `medgemma1.5:latest`
 - OpenAI backend (legacy): `gpt-4o`
 - Temperature: `0.2` (slight variation but mostly deterministic)
@@ -236,7 +239,7 @@ The image is base64-encoded and sent to Ollama's OpenAI-compatible multi-modal A
 
 ---
 
-## 5.6 LLM Backend Configuration
+## 5.7 LLM Backend Configuration
 
 The same OpenAI client SDK is used for both backends. Ollama exposes an OpenAI-compatible endpoint.
 
@@ -248,13 +251,14 @@ OPENAI_API_KEY=sk-...    # only needed for openai backend
 ```
 
 **Ollama setup:**
+
 ```bash
 ollama pull llama3.2
 ollama serve   # starts on http://localhost:11434
 ```
 
 | Property | OpenAI | Ollama |
-|----------|--------|--------|
+| :--- | :--- | :--- |
 | Cost | Per-token billing | Free (local compute) |
 | Privacy | Data sent to cloud | 100% local |
 | Speed | ~0.5s first token | Depends on hardware |
@@ -263,10 +267,10 @@ ollama serve   # starts on http://localhost:11434
 
 ---
 
-## 5.7 Pipeline Limitations and Known Issues
+## 5.8 Pipeline Limitations and Known Issues
 
 | Issue | Description | Mitigation |
-|-------|-------------|------------|
+| :--- | :--- | :--- |
 | NER ambiguity | "last labs" → limit or date_range? | LLM resolves via context |
 | Intent overlap | "diabetes meds" → medication_check or diagnosis_check? | Retriever fetches both for `history_lookup` |
 | Date range "2024" | Year-only references not parsed to cutoff | Returns all records (no filter applied) |

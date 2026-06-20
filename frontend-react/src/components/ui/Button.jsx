@@ -1,3 +1,20 @@
+/**
+ * @file Button.jsx
+ * @description Reusable Button component for the MedMonitor UI.
+ *
+ * Variants:
+ *   - `primary`   — teal filled, used for primary CTAs.
+ *   - `secondary` — white with navy border, for secondary actions.
+ *   - `danger`    — red filled, for destructive operations.
+ *   - `ghost`     — transparent with navy hover, for subtle actions.
+ *   - `nav`       — used inside the sidebar navigation rail.
+ *
+ * Sizes:
+ *   - `sm`   — compact, extra-small text.
+ *   - `md`   — default, small text (most common).
+ *   - `lg`   — large, semi-bold text.
+ *   - `icon` — square pad-only button for icon-only usage.
+ */
 import { clsx } from 'clsx'
 
 const variants = {
@@ -15,6 +32,20 @@ const sizes = {
   icon: 'p-2 rounded-lg',
 }
 
+/**
+ * A styled `<button>` element with variant and size presets.
+ *
+ * @param {Object}      props
+ * @param {'primary'|'secondary'|'danger'|'ghost'|'nav'} [props.variant='primary']
+ *   Visual style preset for the button.
+ * @param {'sm'|'md'|'lg'|'icon'} [props.size='md']
+ *   Padding/typography size preset.
+ * @param {string}      [props.className='']  Additional Tailwind classes to merge.
+ * @param {boolean}     [props.disabled=false] Disables the button and mutes its opacity.
+ * @param {boolean}     [props.loading=false]  Shows a spinner and prevents interaction.
+ * @param {React.ReactNode} props.children     Button label or icon content.
+ * @returns {JSX.Element}
+ */
 export default function Button({
   variant = 'primary',
   size = 'md',

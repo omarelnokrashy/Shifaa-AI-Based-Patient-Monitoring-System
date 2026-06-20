@@ -40,10 +40,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 # ── Password helpers ───────────────────────────────────────────────────────────
 def verify_password(plain: str, hashed: str) -> bool:
+    """Return ``True`` if *plain* matches the bcrypt *hashed* password, ``False`` otherwise."""
     return pwd_ctx.verify(plain, hashed)
 
 
 def hash_password(plain: str) -> str:
+    """Hash a plaintext password using bcrypt and return the resulting hash string."""
     return pwd_ctx.hash(plain)
 
 
@@ -105,6 +107,11 @@ def require_role(*allowed_roles: str) -> Callable:
             ...
     """
     def _check(user: models.User = Depends(get_current_user)) -> models.User:
+        """
+        Inner FastAPI dependency returned by ``require_role``.
+        Verifies that the authenticated user's role is in ``allowed_roles``
+        and raises ``403 Forbidden`` if it is not.
+        """
         if user.role.value not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

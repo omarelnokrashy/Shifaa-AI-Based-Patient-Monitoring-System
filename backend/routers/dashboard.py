@@ -31,11 +31,13 @@ _viewers = require_role("doctor", "admin", "nurse")
 
 
 class AlertCount(BaseModel):
+    """Alert frequency aggregated by type for the last 24 hours."""
     alert_type: str
     count:      int
 
 
 class RecentAlert(BaseModel):
+    """Lightweight alert snapshot shown in the dashboard feed."""
     id:         int
     patient_id: int
     alert_type: str
@@ -47,6 +49,13 @@ class RecentAlert(BaseModel):
 
 
 class DashboardSummary(BaseModel):
+    """
+    Aggregated payload returned by ``GET /api/dashboard/summary``.
+
+    Combines alert counts, the most recent unacknowledged alerts,
+    inference service health statuses, active monitoring sessions,
+    and the number of chat queries issued in the last 24 hours.
+    """
     alert_counts:    list[AlertCount]
     recent_alerts:   list[RecentAlert]
     service_health:  dict
@@ -65,26 +74,31 @@ async def get_summary(
     """
     since = datetime.utcnow() - timedelta(hours=24)
 
+    # Resolve assigned patient IDs for doctors and nurses
+    assigned_ids = None
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned_ids = [
+            a.patient_id
+            for a in db.query(models.PatientAssignment.patient_id)
+            .filter(models.PatientAssignment.user_id == _user.id)
+            .all()
+        ]
+
     # ── Alert counts (last 24 h) ───────────────────────────────────────────
-    counts_raw = (
-        db.query(models.Alert.alert_type, func.count(models.Alert.id))
-        .filter(models.Alert.created_at >= since)
-        .group_by(models.Alert.alert_type)
-        .all()
-    )
+    q_counts = db.query(models.Alert.alert_type, func.count(models.Alert.id)).filter(models.Alert.created_at >= since)
+    if assigned_ids is not None:
+        q_counts = q_counts.filter(models.Alert.patient_id.in_(assigned_ids))
+    counts_raw = q_counts.group_by(models.Alert.alert_type).all()
     alert_counts = [AlertCount(alert_type=str(t), count=c) for t, c in counts_raw]
 
     # ── Recent unacknowledged alerts ───────────────────────────────────────
-    recent = (
-        db.query(models.Alert)
-        .filter(
-            models.Alert.created_at >= since,
-            models.Alert.acknowledged_by == None,  # noqa: E711
-        )
-        .order_by(models.Alert.created_at.desc())
-        .limit(10)
-        .all()
+    q_recent = db.query(models.Alert).filter(
+        models.Alert.created_at >= since,
+        models.Alert.acknowledged_by == None,  # noqa: E711
     )
+    if assigned_ids is not None:
+        q_recent = q_recent.filter(models.Alert.patient_id.in_(assigned_ids))
+    recent = q_recent.order_by(models.Alert.created_at.desc()).limit(10).all()
 
     # ── Service health (parallel) ──────────────────────────────────────────
     import asyncio
@@ -98,12 +112,34 @@ async def get_summary(
     fall_sess  = await fall_detection_client.list_sessions()
     seiz_sess  = await seizure_detection_client.list_sessions()
 
+    if assigned_ids is not None:
+        # Filter fall sessions: room_id is patient_id if digit-only, or patient_id is present
+        filtered_fall = []
+        for s in fall_sess:
+            pid = s.get("patient_id")
+            if pid is None and s.get("room_id", "").isdigit():
+                pid = int(s["room_id"])
+            if pid in assigned_ids:
+                filtered_fall.append(s)
+        fall_sess = filtered_fall
+
+        # Filter seizure sessions: session_id is patient_id
+        filtered_seiz = []
+        for s in seiz_sess:
+            pid = s.get("patient_id")
+            if pid is None:
+                sid = s.get("session_id", "")
+                if sid.isdigit():
+                    pid = int(sid)
+            if pid in assigned_ids:
+                filtered_seiz.append(s)
+        seiz_sess = filtered_seiz
+
     # ── Chat activity in last 24 h ─────────────────────────────────────────
-    chat_count = (
-        db.query(func.count(models.ChatLog.id))
-        .filter(models.ChatLog.created_at >= since)
-        .scalar() or 0
-    )
+    q_chat = db.query(func.count(models.ChatLog.id)).filter(models.ChatLog.created_at >= since)
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        q_chat = q_chat.filter(models.ChatLog.doctor_id == _user.id)
+    chat_count = q_chat.scalar() or 0
 
     return DashboardSummary(
         alert_counts    = alert_counts,
@@ -125,6 +161,7 @@ async def get_summary(
 from pydantic import BaseModel as _Base
 
 class AcknowledgeRequest(_Base):
+    """Request body for the alert acknowledgement PATCH endpoint."""
     acknowledged_by: int   # user_id of the acknowledger
 
 

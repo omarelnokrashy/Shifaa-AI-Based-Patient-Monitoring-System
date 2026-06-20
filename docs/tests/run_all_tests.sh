@@ -36,15 +36,24 @@ echo "📄 Log file:     $LOG_FILE"
 echo "📊 Report file:  $REPORT_FILE"
 echo ""
 
-# Check virtual environment
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo "⚠️  Virtual environment not activated. Trying to activate..."
-    if [ -f "$PROJECT_ROOT/venv/bin/activate" ]; then
-        source "$PROJECT_ROOT/venv/bin/activate"
-        echo "✅ Virtual environment activated."
+# Check conda environment
+if [ "${CONDA_DEFAULT_ENV:-}" != "gp" ]; then
+    echo "⚠️  Conda environment 'gp' not activated. Trying to activate..."
+    if [ -f "/home/omar/anaconda3/etc/profile.d/conda.sh" ]; then
+        source "/home/omar/anaconda3/etc/profile.d/conda.sh"
+        conda activate gp
+        echo "✅ Conda environment 'gp' activated."
+    elif [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+        source "$HOME/anaconda3/etc/profile.d/conda.sh"
+        conda activate gp
+        echo "✅ Conda environment 'gp' activated."
+    elif command -v conda >/dev/null 2>&1; then
+        eval "$(conda shell.bash hook)"
+        conda activate gp
+        echo "✅ Conda environment 'gp' activated."
     else
-        echo "❌ ERROR: No venv found at $PROJECT_ROOT/venv"
-        echo "   Run: python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+        echo "❌ ERROR: Conda environment 'gp' is not active and conda could not be found."
+        echo "   Please run: conda activate gp"
         exit 1
     fi
 fi

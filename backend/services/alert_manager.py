@@ -44,18 +44,19 @@ class AlertManager:
     """
 
     def __init__(self):
-        self._clients: set[WebSocket] = set()
+        """Initialise the manager with an empty dict of WebSocket subscribers to User objects."""
+        self._clients: dict[WebSocket, models.User] = {}
 
     # ── WebSocket subscription management ─────────────────────────────────
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(self, websocket: WebSocket, user: models.User) -> None:
         """Accept and register a new alert subscriber."""
         await websocket.accept()
-        self._clients.add(websocket)
+        self._clients[websocket] = user
         log.info(f"Alert subscriber connected. Total: {len(self._clients)}")
 
     def disconnect(self, websocket: WebSocket) -> None:
         """Remove a subscriber (called in finally blocks)."""
-        self._clients.discard(websocket)
+        self._clients.pop(websocket, None)
         log.info(f"Alert subscriber disconnected. Total: {len(self._clients)}")
 
     # ── Core publish method ────────────────────────────────────────────────
@@ -97,7 +98,7 @@ class AlertManager:
         log.warning(f"ALERT [{alert_type}] patient={patient_id} severity={severity} id={alert.id}")
 
         # Broadcast to all live WebSocket subscribers
-        await self._broadcast({
+        await self._broadcast(db, patient_id, {
             "type":       "alert",
             "id":         alert.id,
             "patient_id": patient_id,
@@ -110,19 +111,28 @@ class AlertManager:
         return alert
 
     # ── Internal broadcast ────────────────────────────────────────────────
-    async def _broadcast(self, payload: dict) -> None:
-        """Send a JSON payload to every connected subscriber, dropping dead connections."""
+    async def _broadcast(self, db: Session, patient_id: int, payload: dict) -> None:
+        """Send a JSON payload to every connected subscriber, dropping dead connections and filtering by PatientAssignment."""
         if not self._clients:
             return
         raw = json.dumps(payload, default=str)
         dead: list[WebSocket] = []
-        for ws in list(self._clients):
+        for ws, user in list(self._clients.items()):
+            # Enforce data confidentiality for doctors and nurses
+            if user.role in (models.UserRole.doctor, models.UserRole.nurse):
+                assigned = db.query(models.PatientAssignment).filter(
+                    models.PatientAssignment.patient_id == patient_id,
+                    models.PatientAssignment.user_id == user.id
+                ).first()
+                if not assigned:
+                    continue
+
             try:
                 await ws.send_text(raw)
             except Exception:
                 dead.append(ws)
         for ws in dead:
-            self._clients.discard(ws)
+            self._clients.pop(ws, None)
 
 
 # ── Module-level singleton ────────────────────────────────────────────────────

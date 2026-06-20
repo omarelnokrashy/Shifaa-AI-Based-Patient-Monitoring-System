@@ -9,12 +9,22 @@ const useAlertsStore = create((set, get) => ({
   alerts: [],       // AlertEvent[]
   unread: 0,
 
+  /**
+   * Prepend a new alert to the list (capped at 200) and increment the unread counter.
+   *
+   * @param {Object} alert - The alert event object received from the WebSocket.
+   */
   addAlert: (alert) =>
     set((s) => ({
       alerts: [alert, ...s.alerts].slice(0, 200),  // cap at 200
       unread: s.unread + 1,
     })),
 
+  /**
+   * Mark a specific alert as acknowledged.
+   *
+   * @param {number|string} id - The `id` of the alert to acknowledge.
+   */
   acknowledge: (id) =>
     set((s) => ({
       alerts: s.alerts.map((a) =>
@@ -22,8 +32,10 @@ const useAlertsStore = create((set, get) => ({
       ),
     })),
 
+  /** Reset the unread counter to zero (e.g. when the alert panel is opened). */
   clearUnread: () => set({ unread: 0 }),
 
+  /** Clear all alerts and reset the unread counter (e.g. on logout). */
   reset: () => set({ alerts: [], unread: 0 }),
 }))
 

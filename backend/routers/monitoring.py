@@ -25,7 +25,7 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -44,11 +44,19 @@ _any_auth = require_role("doctor", "nurse", "admin")
 
 # ── Request schemas ─────────────────────────────────────────────────────────────
 class FallStartRequest(BaseModel):
+    """Request body to start a fall detection monitoring session for a patient room."""
     room_id:    str      # e.g. "room-4b" or str(patient_id)
     patient_id: int
 
 
 class SeizureStartRequest(BaseModel):
+    """
+    Request body to start a seizure detection monitoring session.
+
+    ``source`` may be a camera index (e.g. ``"0"``), a local file path,
+    or an RTSP stream URL.  ``bed_roi`` optionally constrains detection
+    to a bounding-box region in the frame (JSON-encoded coordinates).
+    """
     patient_id: int
     source:     str      # camera index, file path, RTSP URL
     mode:       str = "monitor"
@@ -71,6 +79,14 @@ async def start_fall_monitoring(
     if not db.query(models.Patient).filter(models.Patient.id == req.patient_id).first():
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned = db.query(models.PatientAssignment).filter(
+            models.PatientAssignment.patient_id == req.patient_id,
+            models.PatientAssignment.user_id == _user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
+
     result = await fall_detection_client.create_session(req.room_id)
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
@@ -78,8 +94,17 @@ async def start_fall_monitoring(
 
 
 @router.delete("/monitoring/fall/{room_id}/stop")
-async def stop_fall_monitoring(room_id: str, _user = Depends(_clinical)):
+async def stop_fall_monitoring(room_id: str, db: Session = Depends(get_db), _user = Depends(_clinical)):
     """Stop a fall detection session."""
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        patient_id = int(room_id) if room_id.isdigit() else None
+        if patient_id:
+            assigned = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.patient_id == patient_id,
+                models.PatientAssignment.user_id == _user.id
+            ).first()
+            if not assigned:
+                raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
     result = await fall_detection_client.delete_session(room_id)
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
@@ -101,6 +126,14 @@ async def start_seizure_monitoring(
     if not db.query(models.Patient).filter(models.Patient.id == req.patient_id).first():
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned = db.query(models.PatientAssignment).filter(
+            models.PatientAssignment.patient_id == req.patient_id,
+            models.PatientAssignment.user_id == _user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
+
     session_id = str(req.patient_id)
     result = await seizure_detection_client.start_session(
         session_id=session_id,
@@ -121,23 +154,88 @@ async def start_seizure_monitoring(
 
 
 @router.delete("/monitoring/seizure/{session_id}/stop")
-async def stop_seizure_monitoring(session_id: str, _user = Depends(_clinical)):
+async def stop_seizure_monitoring(session_id: str, db: Session = Depends(get_db), _user = Depends(_clinical)):
     """Stop a seizure monitoring session."""
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        patient_id = int(session_id) if session_id.isdigit() else None
+        if patient_id:
+            assigned = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.patient_id == patient_id,
+                models.PatientAssignment.user_id == _user.id
+            ).first()
+            if not assigned:
+                raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
     result = await seizure_detection_client.stop_session(session_id)
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
     return result
+@router.post("/monitoring/seizure/upload-test-video")
+async def upload_seizure_test_video(
+    file: UploadFile = File(...),
+    _user = Depends(_clinical),
+):
+    """
+    Upload a video file to be used as a source for seizure detection testing.
+    Saves it to a temporary path and returns the absolute file path.
+    """
+    import os
+    import time
+    import shutil
+    from pathlib import Path
+
+    upload_dir = Path("uploads/seizure_test")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Use a safe file name or timestamp
+    file_path = upload_dir / f"test_{int(time.time())}_{file.filename}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {"file_path": str(file_path.resolve())}
+
 
 
 # ── Aggregated status ────────────────────────────────────────────────────────────
 @router.get("/monitoring/status")
-async def monitoring_status(_user = Depends(_any_auth)):
+async def monitoring_status(db: Session = Depends(get_db), _user = Depends(_any_auth)):
     """
     Return the live state of all fall and seizure monitoring sessions,
     plus health checks for the three inference services.
     """
     fall_sessions    = await fall_detection_client.list_sessions()
     seizure_sessions = await seizure_detection_client.list_sessions()
+    
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned_ids = {
+            a.patient_id
+            for a in db.query(models.PatientAssignment.patient_id)
+            .filter(models.PatientAssignment.user_id == _user.id)
+            .all()
+        }
+        
+        # Filter fall sessions: room_id is patient_id if digit-only, or patient_id is present
+        filtered_fall = []
+        for s in fall_sessions:
+            pid = s.get("patient_id")
+            if pid is None and s.get("room_id", "").isdigit():
+                pid = int(s["room_id"])
+            if pid in assigned_ids:
+                filtered_fall.append(s)
+        fall_sessions = filtered_fall
+
+        # Filter seizure sessions: session_id is patient_id
+        filtered_seiz = []
+        for s in seizure_sessions:
+            pid = s.get("patient_id")
+            if pid is None:
+                sid = s.get("session_id", "")
+                if sid.isdigit():
+                    pid = int(sid)
+            if pid in assigned_ids:
+                filtered_seiz.append(s)
+        seizure_sessions = filtered_seiz
+
     arr_health  = await __import__("backend.services.arrhythmia_client",   fromlist=["health_check"]).health_check()
     fall_health = await fall_detection_client.health_check()
     seiz_health = await seizure_detection_client.health_check()
@@ -174,13 +272,13 @@ async def ws_alerts(websocket: WebSocket):
         from ..auth import get_current_user_from_token
         from ..database import SessionLocal
         db = SessionLocal()
-        get_current_user_from_token(token, db)  # raises if invalid
+        user = get_current_user_from_token(token, db)  # raises if invalid
         db.close()
     except Exception:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return
 
-    await alert_manager.connect(websocket)
+    await alert_manager.connect(websocket, user)
     try:
         while True:
             # Keep-alive: client can send any text (e.g. "ping")
@@ -279,6 +377,12 @@ async def _seizure_event_relay(session_id: str, patient_id: int):
     last_status = "INITIALISING"
 
     async def on_event(event: dict):
+        """
+        Callback invoked for every frame-level event received from the seizure
+        detection service.  Fires a DB alert and broadcasts to all WebSocket
+        subscribers only on the first frame that transitions into SEIZURE status,
+        avoiding alert storms for sustained seizure episodes.
+        """
         nonlocal last_status
         current_status = event.get("status", "NORMAL")
 

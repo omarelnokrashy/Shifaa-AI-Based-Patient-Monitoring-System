@@ -29,18 +29,21 @@ import enum
 
 # ── Enumerations ──────────────────────────────────────────────────────────────
 class UserRole(str, enum.Enum):
+    """Permitted role values for a user account, used to gate API access."""
     doctor = "doctor"
     nurse  = "nurse"
     admin  = "admin"
 
 
 class AlertType(str, enum.Enum):
+    """Classifier label for an AI-generated clinical alert."""
     arrhythmia = "arrhythmia"
     fall       = "fall"
     seizure    = "seizure"
 
 
 class AlertSeverity(str, enum.Enum):
+    """Clinical severity level assigned to an alert by the inference engine."""
     low      = "low"
     medium   = "medium"
     high     = "high"
@@ -85,6 +88,11 @@ Doctor = User
 
 # ── Patient ────────────────────────────────────────────────────────────────────
 class Patient(Base):
+    """
+    Core patient demographic record.  All clinical sub-tables (diagnoses,
+    medications, lab results, allergies, visits, alerts, and vital signs)
+    reference this table via ``patient_id``.
+    """
     __tablename__ = "patients"
 
     id         = Column(Integer, primary_key=True, index=True)
@@ -106,6 +114,10 @@ class Patient(Base):
 
 # ── Visit ──────────────────────────────────────────────────────────────────────
 class Visit(Base):
+    """
+    A single clinical encounter between a patient and a doctor.
+    Records the date, chief complaint, and free-text clinical notes.
+    """
     __tablename__ = "visits"
 
     id              = Column(Integer, primary_key=True, index=True)
@@ -123,6 +135,10 @@ class Visit(Base):
 
 # ── Diagnosis ──────────────────────────────────────────────────────────────────
 class Diagnosis(Base):
+    """
+    A clinical diagnosis linked to a patient, optionally coded with an ICD-10 code.
+    ``is_active`` distinguishes current from resolved conditions.
+    """
     __tablename__ = "diagnoses"
 
     id           = Column(Integer, primary_key=True, index=True)
@@ -138,6 +154,10 @@ class Diagnosis(Base):
 
 # ── Medication ─────────────────────────────────────────────────────────────────
 class Medication(Base):
+    """
+    A medication prescribed to a patient, with dosage and active/inactive status.
+    ``end_date`` is ``NULL`` for ongoing prescriptions.
+    """
     __tablename__ = "medications"
 
     id         = Column(Integer, primary_key=True, index=True)
@@ -153,6 +173,10 @@ class Medication(Base):
 
 # ── LabResult ──────────────────────────────────────────────────────────────────
 class LabResult(Base):
+    """
+    A single laboratory test result for a patient.
+    ``is_abnormal`` is set by the importing process based on the reference range.
+    """
     __tablename__ = "lab_results"
 
     id          = Column(Integer, primary_key=True, index=True)
@@ -169,6 +193,10 @@ class LabResult(Base):
 
 # ── Allergy ────────────────────────────────────────────────────────────────────
 class Allergy(Base):
+    """
+    A known drug or substance allergy for a patient, including the expected
+    reaction and its severity.
+    """
     __tablename__ = "allergies"
 
     id         = Column(Integer, primary_key=True, index=True)
@@ -182,6 +210,10 @@ class Allergy(Base):
 
 # ── ChatLog ────────────────────────────────────────────────────────────────────
 class ChatLog(Base):
+    """
+    Persistent log of every chatbot interaction.  Stores the raw query,
+    the generated response, and the intent label detected by the NLU layer.
+    """
     __tablename__ = "chat_logs"
 
     id              = Column(Integer, primary_key=True, index=True)
@@ -255,3 +287,21 @@ class VitalSign(Base):
 
 # Composite index for time-series queries
 Index("idx_vitals_patient_metric_time", VitalSign.patient_id, VitalSign.metric, VitalSign.recorded_at)
+
+
+# ── PatientAssignment ─────────────────────────────────────────────────────────
+class PatientAssignment(Base):
+    """
+    Tracks assignments of patients to doctors/nurses.
+    Provides data confidentiality partitioning.
+    """
+    __tablename__ = "patient_assignments"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    user_id     = Column(Integer, ForeignKey("users.id"), nullable=False)
+    patient_id  = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    assigned_at = Column(DateTime, server_default=func.now())
+
+    user        = relationship("User", backref="assignments")
+    patient     = relationship("Patient", backref="assignments")
+

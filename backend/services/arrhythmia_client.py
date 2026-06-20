@@ -107,6 +107,24 @@ async def predict_ecg(
 
 
 def _error_response(msg: str) -> dict:
+    """
+    Build a degraded result dict when the arrhythmia service is unreachable or returns an error.
+
+    All prediction fields are set to ``None`` / empty so callers can treat the
+    response uniformly without extra ``None`` checks.  The ``error`` key carries
+    the human-readable failure description for logging and API responses.
+
+    Parameters
+    ----------
+    msg : str
+        Description of the error that occurred.
+
+    Returns
+    -------
+    dict
+        ``{'stage1': None, 'stage1_confidence': None, 'stage2_class': None,
+           'stage2_confidence': None, 'all_probabilities': {}, 'error': msg}``
+    """
     return {
         "stage1":            None,
         "stage1_confidence": None,

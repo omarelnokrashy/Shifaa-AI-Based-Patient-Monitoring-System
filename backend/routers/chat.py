@@ -1,7 +1,21 @@
+"""
+Chat router
+-----------
+Exposes two chat interfaces for authenticated doctors:
+
+* REST endpoint   POST /api/chat          — single-shot query/response (non-streaming).
+* WebSocket       WS   /api/chat/stream   — token-by-token streaming with optional
+  chain-of-thought ('<think>' / MedGemma style) display.
+
+Both modes support a ``'patient'`` mode (full RAG pipeline with patient records)
+and a ``'general'`` mode (open-ended medical Q&A without patient context).
+Access is restricted to the ``doctor`` role via the require_role dependency.
+"""
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db, SessionLocal
-from ..auth import get_current_doctor
+from ..auth import get_current_doctor, require_role
 from ..services.intent import classify_intent
 from ..services.ner import extract_entities
 from ..services.retriever import retrieve
@@ -186,10 +200,31 @@ async def stream_with_thinking(websocket: WebSocket, generator):
 @router.post('/chat', response_model=schemas.ChatResponse)
 def chat_rest(request: schemas.ChatRequest,
               db: Session = Depends(get_db),
-              doctor=Depends(get_current_doctor)):
+              doctor=Depends(require_role("doctor"))):
+    """
+    Non-streaming (REST) chat endpoint for doctor–patient queries.
+
+    Runs the full pipeline synchronously:
+      1. Classify intent via the NER / intent service.
+      2. Extract medical entities from the query.
+      3. Retrieve relevant patient records from the database.
+      4. Generate a response using the LLM with the retrieved context.
+
+    The conversation turn is persisted to ``ChatLog`` after generation.
+    Returns the complete answer, detected intent, and source references.
+    """
     patient = db.query(models.Patient).filter(models.Patient.id == request.patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail='Patient not found')
+    
+    # Verify assignment
+    assigned = db.query(models.PatientAssignment).filter(
+        models.PatientAssignment.patient_id == request.patient_id,
+        models.PatientAssignment.user_id == doctor.id
+    ).first()
+    if not assigned:
+        raise HTTPException(status_code=403, detail='Access Denied: Patient is not assigned to you')
+
     intent_result = classify_intent(request.query)
     intent        = intent_result['intent']
     entities      = extract_entities(request.query)
@@ -207,10 +242,53 @@ def chat_rest(request: schemas.ChatRequest,
 
 
 # ── WebSocket (streaming) ─────────────────────────────────────────────────────
-@router.websocket('/ws/chat')
+@router.websocket('/chat/stream')
 async def chat_websocket(websocket: WebSocket):
-    await websocket.accept()
+    """
+    Streaming WebSocket chat endpoint for authenticated doctors.
+
+    Authentication is performed via a ``?token=<jwt>`` query parameter
+    because WebSocket clients cannot send custom HTTP headers easily.
+
+    Message protocol (client → server):
+      - ``{"type": "stop"}``                   — abort the current generation.
+      - ``{"query": str, "patient_id": int}``  — patient-context query (full RAG).
+      - ``{"query": str, "mode": "general"}``  — general medical Q&A (no patient).
+
+    Message protocol (server → client):
+      - ``{"type": "status", "step": str, "status": "active"|"done"}``
+      - ``{"type": "think_start"}`` / ``{"type": "think", "chunk": str}`` / ``{"type": "think_done", "duration": float}``
+      - ``{"type": "chunk", "chunk": str, "done": false}``
+      - ``{"type": "done", ...}``
+      - ``{"error": str}`` on validation or auth failure.
+    """
+    # Get token from query parameters
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.accept()
+        await websocket.send_json({'error': 'Missing token query parameter'})
+        await websocket.close(code=4001)
+        return
+
     db = SessionLocal()
+    try:
+        from ..auth import get_current_user_from_token
+        user = get_current_user_from_token(token, db)
+    except Exception:
+        await websocket.accept()
+        await websocket.send_json({'error': 'Invalid or expired token'})
+        await websocket.close(code=4001)
+        db.close()
+        return
+
+    if user.role.value != "doctor":
+        await websocket.accept()
+        await websocket.send_json({'error': 'Access Denied: Chat is only available for doctors'})
+        await websocket.close(code=4003)
+        db.close()
+        return
+
+    await websocket.accept()
     stop_flag = {"stop": False}
 
     try:
@@ -226,7 +304,6 @@ async def chat_websocket(websocket: WebSocket):
             stop_flag["stop"] = False
             query      = data.get('query', '')
             patient_id = data.get('patient_id')
-            token      = data.get('token', '')
             mode       = data.get('mode', 'patient')   # 'patient' | 'general'
 
             if not query:
@@ -251,6 +328,7 @@ async def chat_websocket(websocket: WebSocket):
                     'sources': []
                 })
                 db.add(models.ChatLog(
+                    doctor_id=user.id,
                     query=query,
                     response=answer_buf,
                     intent_detected='general_medical_qa'
@@ -266,6 +344,15 @@ async def chat_websocket(websocket: WebSocket):
             patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
             if not patient:
                 await websocket.send_json({'error': 'Patient not found'})
+                continue
+
+            # Verify assignment
+            assigned = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.patient_id == patient_id,
+                models.PatientAssignment.user_id == user.id
+            ).first()
+            if not assigned:
+                await websocket.send_json({'error': 'Access Denied: Patient is not assigned to you'})
                 continue
 
             await websocket.send_json({"type": "status", "step": "intent", "status": "active"})
@@ -286,7 +373,6 @@ async def chat_websocket(websocket: WebSocket):
                 websocket, generate_answer(query, intent, records, patient)
             )
 
-
             await websocket.send_json({
                 'type': 'done',
                 'chunk': '',
@@ -296,6 +382,7 @@ async def chat_websocket(websocket: WebSocket):
             })
 
             db.add(models.ChatLog(
+                doctor_id=user.id,
                 patient_id=patient_id,
                 query=query,
                 response=answer_buf,

@@ -1,3 +1,16 @@
+"""
+Authentication router
+----------------------
+Provides the login endpoint used by all roles (doctor, nurse, admin) to
+obtain a signed JWT.  The token is subsequently required by every other
+protected endpoint via the ``require_role`` / ``get_current_doctor``
+dependency.
+
+Endpoints
+---------
+POST /api/auth/login  → validate credentials and return a Bearer token
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ..database import get_db

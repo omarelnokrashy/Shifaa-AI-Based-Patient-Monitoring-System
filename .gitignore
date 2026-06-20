@@ -20,3 +20,9 @@ dist-ssr/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Databases, Logs and Uploads
+*.db
+*.log
+logs/
+uploads/

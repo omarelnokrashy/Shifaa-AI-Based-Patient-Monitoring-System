@@ -19,6 +19,11 @@ const useAuthStore = create(
       token: null,
       user: null,   // { id, name, role, email }
 
+      /**
+       * Decode a JWT, extract user fields, and persist both token and user to state.
+       *
+       * @param {string} token - A valid JWT access token returned by the login endpoint.
+       */
       login: (token) => {
         try {
           const payload = jwtDecode(token)
@@ -35,6 +40,11 @@ const useAuthStore = create(
         }
       },
 
+      /**
+       * Clear the stored token and user, effectively ending the session.
+       * The Axios interceptor will stop attaching the Authorization header
+       * after this call.
+       */
       logout: () => set({ token: null, user: null }),
     }),
     {

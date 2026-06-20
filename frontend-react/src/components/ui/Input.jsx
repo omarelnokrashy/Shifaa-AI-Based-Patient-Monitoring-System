@@ -1,5 +1,28 @@
+/**
+ * @file Input.jsx
+ * @description Form field components for the MedMonitor UI.
+ *
+ * - `Input`  — a labelled text input with optional error and hint messages.
+ * - `Select` — a labelled native `<select>` with matching visual styling.
+ *
+ * Both components automatically derive an `id` from the label when no explicit
+ * `id` prop is provided, ensuring label-input association for accessibility.
+ */
 import { clsx } from 'clsx'
 
+/**
+ * A styled text input field with label, error, and hint support.
+ *
+ * @param {Object}  props
+ * @param {string}  [props.label]          Optional label text rendered above the input.
+ * @param {string}  [props.error]          Validation error message; styles the input red when set.
+ * @param {string}  [props.hint]           Helper text shown below the input (hidden when `error` is set).
+ * @param {string}  [props.className='']   Additional Tailwind classes applied to the `<input>` element.
+ * @param {string}  [props.wrapperClass=''] Additional classes applied to the outer wrapper `<div>`.
+ * @param {string}  [props.id]             Explicit `id` for the input; derived from `label` if omitted.
+ * @param {string}  [props.type='text']    HTML input type (e.g. `'text'`, `'password'`, `'email'`).
+ * @returns {JSX.Element}
+ */
 export default function Input({
   label,
   error,
@@ -36,6 +59,17 @@ export default function Input({
   )
 }
 
+/**
+ * A styled native `<select>` element with label and error support.
+ *
+ * @param {Object}          props
+ * @param {string}          [props.label]           Optional label text rendered above the select.
+ * @param {React.ReactNode} props.children           `<option>` elements to render inside the select.
+ * @param {string}          [props.error]            Validation error message; styles the border red when set.
+ * @param {string}          [props.wrapperClass='']  Additional classes applied to the outer wrapper `<div>`.
+ * @param {string}          [props.id]               Explicit `id`; derived from `label` if omitted.
+ * @returns {JSX.Element}
+ */
 export function Select({ label, children, error, wrapperClass = '', id, ...props }) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
   return (

@@ -80,6 +80,16 @@ async def stop_session(session_id: str) -> dict:
 
 
 async def list_sessions() -> list[dict]:
+    """
+    Retrieve all active seizure monitoring sessions from the service.
+
+    Returns
+    -------
+    list[dict]
+        A list of session dicts as returned by the seizure service ``GET /sessions``
+        endpoint.  Returns an empty list if the service is unreachable or returns
+        an error, so callers can iterate safely without a ``None`` check.
+    """
     try:
         resp = await _client.get("/sessions")
         resp.raise_for_status()

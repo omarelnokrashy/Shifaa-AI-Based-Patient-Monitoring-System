@@ -13,7 +13,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   LayoutDashboard, Users, Activity, Bell, Settings,
-  HeartPulse, LogOut, Menu, X, ChevronRight,
+  HeartPulse, LogOut, Menu, X, ChevronRight, Camera
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import useAlertsStore from '../../store/alertsStore'
@@ -25,6 +25,7 @@ const NAV_ITEMS = {
     { to: '/doctor/dashboard',  label: 'Dashboard',   Icon: LayoutDashboard },
     { to: '/doctor/patients',   label: 'Patients',    Icon: Users },
     { to: '/doctor/monitoring', label: 'Live Monitor',Icon: Activity },
+    { to: '/doctor/sandbox',    label: 'Sandbox Test',Icon: Camera },
   ],
   nurse: [
     { to: '/nurse/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -36,6 +37,20 @@ const NAV_ITEMS = {
   ],
 }
 
+/**
+ * The persistent application chrome component.
+ * Renders a collapsible dark-navy sidebar with role-aware navigation links and a
+ * sticky top-bar containing a breadcrumb and an unread-alerts indicator.
+ * The active route's page is rendered via React Router's `<Outlet />`.
+ *
+ * Behaviour:
+ *   - Connects to the global alert WebSocket on mount via `useAlertsWS()`.
+ *   - Filters `NAV_ITEMS` by the current user's role so each role sees only
+ *     the sections relevant to them.
+ *   - Sidebar can be collapsed to icon-only mode via the toggle button.
+ *
+ * @returns {JSX.Element}
+ */
 export default function NavShell() {
   useAlertsWS()   // Start the global alert WebSocket connection
 
@@ -48,6 +63,11 @@ export default function NavShell() {
 
   const navItems = NAV_ITEMS[user?.role] || []
 
+  /**
+   * Clears the auth store and redirects the user to the login page.
+   *
+   * @returns {void}
+   */
   const handleLogout = () => {
     logout()
     navigate('/login')

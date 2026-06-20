@@ -12,7 +12,7 @@
 #
 # Prerequisites:
 #   - .env file configured (copy from .env.example)
-#   - Main conda env: conda activate medical_chatbot
+#   - Main conda env: conda activate gp
 #   - Each repo has its own venv at Repos/<name>/.venv/
 #     If not created yet, run:
 #       python -m venv Repos/Arrythmia-Detection-master/.venv
@@ -47,7 +47,11 @@ fi
 # ── Helper to pick the right Python interpreter ───────────────────────────────
 # Prefer a repo-local .venv, then fall back to the conda-env Python (which has
 # the correct numpy/torch versions), never to /usr/bin/python3 (system).
-CONDA_PYTHON="$(command -v python3 || echo python3)"
+CONDA_PYTHON="/home/omar/anaconda3/envs/gp/bin/python3"
+if [[ ! -x "$CONDA_PYTHON" ]]; then
+    CONDA_PYTHON="$(command -v python3 || echo python3)"
+fi
+
 python_for() {
     local repo_dir="$1"
     local venv_py="$repo_dir/.venv/bin/python"
@@ -112,7 +116,7 @@ echo "      PID=$SEIZ_PID  log=$LOG_DIR/seizure_detection.log"
 # ── 4. Main FastAPI backend ───────────────────────────────────────────────────
 echo "[4/4] Starting main backend on port $MAIN_PORT ..."
 cd "$PROJECT_ROOT"
-python3 -m uvicorn backend.main:app \
+"$CONDA_PYTHON" -m uvicorn backend.main:app \
     --host 0.0.0.0 \
     --port "$MAIN_PORT" \
     --reload \

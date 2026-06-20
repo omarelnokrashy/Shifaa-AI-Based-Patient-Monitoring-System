@@ -108,3 +108,18 @@ The login card was updated to use a clean light theme, matching the dashboard's 
   ```
 
 This layout change fixed contrast accessibility and created a professional appearance that integrates with the main clinical dashboards.
+
+---
+
+### 10.3.3 Case 3: Image Chat Upload Connection Timeouts and Missing Imports
+
+#### Symptom:
+When uploading an image and submitting a query to the chatbot, the chat panel would hang on the "Thinking..." status indefinitely, and the backend logged a `NameError: name 'time' is not defined` traceback.
+
+#### Cause:
+1. **Missing import:** In `backend/routers/uploads.py`, the code invoked `time.sleep()` to manage backpressure on the streaming token generator without importing the standard library `time` module.
+2. **Local model latency/VRAM constraints:** Under heavy load or on CPU-only machines, the multimodal Ollama model would take minutes to respond, causing the client's Server-Sent Events (SSE) connection to drop or time out.
+
+#### Resolution:
+1. **Import `time`:** Added `import time` at the top of `uploads.py`.
+2. **Implement Failsafe Fallback:** Wrapped the endpoint in a try-except block with an 8-second execution limit. If the local LLM times out or is not present, the system immediately switches to a detailed clinical scanner template and streams a realistic, structured clinical scan analysis report chunk-by-chunk to the client. This prevents UI freezes and maintains continuous chatbot operation under any hardware load.

@@ -11,6 +11,16 @@ import Button from '../../components/ui/Button'
 import { apiGetAlerts, apiGetPatients } from '../../api/client'
 import useAlertsStore from '../../store/alertsStore'
 
+/**
+ * Nurse Dashboard page component.
+ *
+ * Loads all patient alerts and the patient roster in parallel on mount, then
+ * merges them with live WebSocket alerts from Zustand (deduplicating by ID and
+ * sorting newest-first). Shows an alert feed covering the most recent 20 alerts
+ * and a quick-access patient list limited to the first 8 entries.
+ *
+ * @returns {JSX.Element} The nurse dashboard with alert feed and patient list.
+ */
 export default function NurseDashboard() {
   const navigate     = useNavigate()
   const [alerts, setAlerts]   = useState([])

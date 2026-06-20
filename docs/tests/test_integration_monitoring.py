@@ -55,10 +55,12 @@ Base.metadata.create_all(bind=engine_test)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
-    """Create one user per role and one patient before all tests in this module."""
+    """Create users and one patient with an assigned visit before all tests in this module."""
     db = TestingSessionLocal()
     _users = {
         "doctor": models.User(name="Test Doctor", email="doc@test.com",
+                              password=hash_password("doc123"), role="doctor", is_active=True),
+        "doctor_unassigned": models.User(name="Test Doctor Unassigned", email="doc_unassigned@test.com",
                               password=hash_password("doc123"), role="doctor", is_active=True),
         "nurse":  models.User(name="Test Nurse",  email="nurse@test.com",
                               password=hash_password("nurse123"), role="nurse", is_active=True),
@@ -70,6 +72,10 @@ def setup_db():
     db.flush()
     patient = models.Patient(name="Test Patient", dob=date(1990, 1, 1), gender="Male")
     db.add(patient)
+    db.flush()
+    # Create assignment visit
+    visit = models.Visit(patient_id=patient.id, doctor_id=_users["doctor"].id, visit_date=date(2026, 1, 1))
+    db.add(visit)
     db.commit()
     db.close()
     yield
@@ -85,6 +91,18 @@ def _token(role: str) -> str:
 
 def _headers(role: str) -> dict:
     return {"Authorization": f"Bearer {_token(role)}"}
+
+
+def _token_by_email(email: str) -> str:
+    db = TestingSessionLocal()
+    user = db.query(models.User).filter(models.User.email == email).first()
+    db.close()
+    return create_access_token({"sub": str(user.id), "role": user.role.value, "name": user.name})
+
+
+def _headers_by_email(email: str) -> dict:
+    return {"Authorization": f"Bearer {_token_by_email(email)}"}
+
 
 
 def _patient_id() -> int:
@@ -283,3 +301,66 @@ class TestAlertBroadcast:
         falls = db.query(models.Alert).filter(models.Alert.alert_type == "fall").count()
         db.close()
         assert falls >= 1
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 5. PATIENT SCOPING & SECURITY TESTS
+# ═════════════════════════════════════════════════════════════════════════════
+class TestPatientScoping:
+    """Verify patient data queries and actions are scoped and restricted by assignment."""
+
+    def test_get_patient_alerts_scoping(self):
+        patient_id = _patient_id()
+        # 1. Assigned doctor should be allowed to view patient alerts
+        resp = client.get(f"/api/patients/{patient_id}/alerts", headers=_headers("doctor"))
+        assert resp.status_code == 200
+
+        # 2. Unassigned doctor should receive 403 Forbidden
+        resp_unassigned = client.get(f"/api/patients/{patient_id}/alerts", headers=_headers_by_email("doc_unassigned@test.com"))
+        assert resp_unassigned.status_code == 403
+
+        # 3. Nurse should be allowed to view patient alerts (nurses are clinical and have global overview)
+        resp_nurse = client.get(f"/api/patients/{patient_id}/alerts", headers=_headers("nurse"))
+        assert resp_nurse.status_code == 200
+
+    def test_arrhythmia_history_scoping(self):
+        patient_id = _patient_id()
+        # 1. Assigned doctor should be allowed to view history
+        resp = client.get(f"/api/arrhythmia/history/{patient_id}", headers=_headers("doctor"))
+        assert resp.status_code == 200
+
+        # 2. Unassigned doctor should receive 403 Forbidden
+        resp_unassigned = client.get(f"/api/arrhythmia/history/{patient_id}", headers=_headers_by_email("doc_unassigned@test.com"))
+        assert resp_unassigned.status_code == 403
+
+    def test_image_analysis_scoping(self):
+        patient_id = _patient_id()
+        assigned_token = _token("doctor")
+        unassigned_token = _token_by_email("doc_unassigned@test.com")
+
+        # 1. Unassigned doctor should get 403
+        resp_unassigned = client.post(
+            "/api/chat/analyze-image",
+            data={
+                "question": "is this normal?",
+                "image_type": "general",
+                "patient_id": patient_id,
+                "token": unassigned_token
+            },
+            files={"image": ("test.png", b"fake_bytes", "image/png")}
+        )
+        assert resp_unassigned.status_code == 403
+
+        # 2. Assigned doctor should not get 403 (returns event stream)
+        resp_assigned = client.post(
+            "/api/chat/analyze-image",
+            data={
+                "question": "is this normal?",
+                "image_type": "general",
+                "patient_id": patient_id,
+                "token": assigned_token
+            },
+            files={"image": ("test.png", b"fake_bytes", "image/png")}
+        )
+        assert resp_assigned.status_code == 200
+

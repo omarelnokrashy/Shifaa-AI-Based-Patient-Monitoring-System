@@ -19,6 +19,15 @@ import { apiGetDashboard } from '../../api/client'
 import useAlertsStore from '../../store/alertsStore'
 import { formatDistanceToNow, calcAge } from '../../components/utils/time'
 
+/**
+ * Doctor Dashboard page.
+ *
+ * Fetches the aggregated dashboard summary (alert counts, recent alerts,
+ * service health, chat count) from the API and merges it with live WebSocket
+ * alerts from Zustand. Refreshes automatically every 30 seconds.
+ *
+ * @returns {JSX.Element} The clinical dashboard with stat bar, alert feed, and service health.
+ */
 export default function DoctorDashboard() {
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
@@ -127,6 +136,17 @@ export default function DoctorDashboard() {
   )
 }
 
+/**
+ * Small metric card showing an icon, a numeric value, and a descriptive label.
+ *
+ * @param {object} props
+ * @param {React.ElementType} props.Icon  - Lucide icon component to display.
+ * @param {string}            props.label - Text label below the value.
+ * @param {number|string}     props.value - Metric value to display prominently.
+ * @param {string}            props.color - Tailwind text colour class for the icon.
+ * @param {string}            props.bg    - Tailwind background colour class for the icon container.
+ * @returns {JSX.Element}
+ */
 function StatCard({ Icon, label, value, color, bg }) {
   return (
     <Card padded={false} className="p-4 flex items-center gap-3">
@@ -141,6 +161,13 @@ function StatCard({ Icon, label, value, color, bg }) {
   )
 }
 
+/**
+ * Loading skeleton for the alert feed section.
+ *
+ * Renders three animated placeholder blocks while dashboard data is fetching.
+ *
+ * @returns {JSX.Element}
+ */
 function Skeleton() {
   return (
     <div className="space-y-3">

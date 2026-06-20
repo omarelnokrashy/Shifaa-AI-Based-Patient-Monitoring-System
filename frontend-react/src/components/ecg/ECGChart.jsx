@@ -88,6 +88,20 @@ export default function ECGChart({
   )
 }
 
+/**
+ * Displays an annotation card summarising the two-stage arrhythmia classification result.
+ * Renders a green card for normal sinus rhythm and a red card when an abnormality is detected.
+ * Shows stage-1 classification, confidence percentage, and (when abnormal) the stage-2 subtype
+ * with its label (e.g. "Atrial Fibrillation") and confidence.
+ *
+ * @param {Object}      props
+ * @param {Object|null} props.result                  The arrhythmia result object; returns null when falsy.
+ * @param {string}      props.result.stage1            Stage-1 label: `'Normal'` or `'Abnormal'`.
+ * @param {number}      props.result.stage1_confidence Stage-1 classifier confidence (0–1).
+ * @param {string|null} [props.result.stage2_class]   Stage-2 subtype code (e.g. `'AF'`, `'SB'`) or null.
+ * @param {number}      [props.result.stage2_confidence] Stage-2 classifier confidence (0–1).
+ * @returns {JSX.Element|null}
+ */
 export function ArrhythmiaResultCard({ result }) {
   if (!result) return null
   const isAbnormal = result.stage1 === 'Abnormal'

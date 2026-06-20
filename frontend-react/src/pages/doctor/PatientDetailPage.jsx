@@ -18,6 +18,7 @@ import AlertFeed from '../../components/monitoring/AlertFeed'
 import { apiGetPatient, apiGetAlerts, apiAnalyzeECG } from '../../api/client'
 import { generateMockECG } from '../../mock/data'
 import { calcAge, formatDate } from '../../components/utils/time'
+import useAuthStore from '../../store/authStore'
 
 
 const TABS = [
@@ -27,6 +28,15 @@ const TABS = [
   { id: 'monitoring',  label: 'Monitoring',  Icon: Activity },
 ]
 
+/**
+ * Patient Detail page — tabbed deep-dive for a single patient.
+ *
+ * Loads patient data and alert history in parallel on mount. Renders a tab bar
+ * (Overview, Chat, ECG, Monitoring) and conditionally shows the Chat tab only
+ * for the doctor role. Nurses receive a read-only view of the same page.
+ *
+ * @returns {JSX.Element} The full patient detail view, or a loading/not-found state.
+ */
 export default function PatientDetailPage() {
   const { id }     = useParams()
   const navigate   = useNavigate()
@@ -34,6 +44,7 @@ export default function PatientDetailPage() {
   const [patient, setPatient] = useState(null)
   const [alerts, setAlerts]   = useState([])
   const [loading, setLoading] = useState(true)
+  const user                  = useAuthStore((s) => s.user)
 
   useEffect(() => {
     Promise.all([
@@ -46,6 +57,11 @@ export default function PatientDetailPage() {
 
   if (loading) return <LoadingState />
   if (!patient) return <p className="text-navy-400 p-8">Patient not found.</p>
+
+  const availableTabs = TABS.filter(t => {
+    if (t.id === 'chat' && user?.role === 'nurse') return false
+    return true
+  })
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
@@ -78,7 +94,7 @@ export default function PatientDetailPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 bg-white border border-navy-100 rounded-xl p-1 w-fit">
-        {TABS.map(({ id: tid, label, Icon }) => (
+        {availableTabs.map(({ id: tid, label, Icon }) => (
           <button
             key={tid}
             onClick={() => setTab(tid)}
@@ -97,7 +113,7 @@ export default function PatientDetailPage() {
 
       {/* Tab content */}
       {tab === 'overview'   && <OverviewTab patient={patient} />}
-      {tab === 'chat'       && (
+      {tab === 'chat'       && user?.role !== 'nurse' && (
         <div className="h-[600px]">
           <ChatPanel patient={patient} />
         </div>
@@ -108,7 +124,16 @@ export default function PatientDetailPage() {
   )
 }
 
-// ── Overview tab ──────────────────────────────────────────────────────────────
+// ── Overview tab ────────────────────────────────────────────────────────────────
+/**
+ * Renders a 2-column card grid with the patient's active diagnoses,
+ * current medications, recent lab results (highlighting abnormal values),
+ * and known allergies.
+ *
+ * @param {object} props
+ * @param {object} props.patient - Full patient object from the API.
+ * @returns {JSX.Element}
+ */
 function OverviewTab({ patient }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -119,7 +144,10 @@ function OverviewTab({ patient }) {
           ? <EmptyState text="No active diagnoses" />
           : (
             <div className="space-y-2">
-              {patient.diagnoses.filter((d) => d.is_active).map((d) => (
+              {patient.diagnoses
+                .filter((d) => d.is_active)
+                .sort((a, b) => b.diagnosed_on.localeCompare(a.diagnosed_on))
+                .map((d) => (
                 <div key={d.id} className="flex items-start justify-between gap-3 py-2 border-b border-navy-50 last:border-0">
                   <div>
                     <p className="text-sm font-medium text-navy-800">{d.description}</p>
@@ -201,11 +229,29 @@ function OverviewTab({ patient }) {
 }
 
 // ── ECG tab ───────────────────────────────────────────────────────────────────
+/**
+ * Renders the ECG waveform chart for the patient together with an
+ * "Run AI Analysis" button that triggers arrhythmia detection.
+ *
+ * @param {object} props
+ * @param {object} props.patient - Patient object; `patient.id` is sent to the ECG API.
+ * @returns {JSX.Element}
+ */
 function ECGTab({ patient }) {
   const [ecgData,  setEcgData]  = useState(generateMockECG())
   const [result,   setResult]   = useState(null)
   const [running,  setRunning]  = useState(false)
 
+  /**
+   * Sends a 12-lead ECG signal array to the arrhythmia analysis API and
+   * stores the classification result in component state.
+   *
+   * In production the real signal data would come from `patient.ecg_file`;
+   * for now a random signal is generated as a placeholder.
+   *
+   * @async
+   * @returns {Promise<void>}
+   */
   const runAnalysis = async () => {
     setRunning(true)
     setResult(null)
@@ -235,6 +281,14 @@ function ECGTab({ patient }) {
 }
 
 // ── Monitoring tab ────────────────────────────────────────────────────────────
+/**
+ * Renders the full alert history for the patient inside a labelled card.
+ *
+ * @param {object}   props
+ * @param {object}   props.patient - Patient object (used for the card subtitle).
+ * @param {object[]} props.alerts  - Array of alert objects to display in the feed.
+ * @returns {JSX.Element}
+ */
 function MonitoringTab({ patient, alerts }) {
   return (
     <Card>
@@ -244,10 +298,22 @@ function MonitoringTab({ patient, alerts }) {
   )
 }
 
+/**
+ * Generic empty-state message used inside tab cards when a list has no items.
+ *
+ * @param {object} props
+ * @param {string} props.text - The message to display.
+ * @returns {JSX.Element}
+ */
 function EmptyState({ text }) {
   return <p className="text-navy-400 text-sm py-2">{text}</p>
 }
 
+/**
+ * Full-page animated skeleton shown while the patient data is loading.
+ *
+ * @returns {JSX.Element}
+ */
 function LoadingState() {
   return (
     <div className="space-y-4 max-w-6xl mx-auto animate-pulse">

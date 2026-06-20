@@ -9,15 +9,39 @@ import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import Input, { Select } from '../../components/ui/Input'
 import { StatusBadge } from '../../components/ui/Badge'
-import { apiGetUsers, apiCreateUser, apiDeactivateUser, apiActivateUser } from '../../api/client'
+import { apiGetUsers, apiCreateUser, apiDeactivateUser, apiActivateUser, apiRandomlyAssignPatients } from '../../api/client'
 import { formatDate } from '../../components/utils/time'
 import { clsx } from 'clsx'
 
+/**
+ * User Management page component.
+ *
+ * Loads all user accounts on mount and allows the admin to filter them by role
+ * using a pill-button toolbar. Supports toggling individual accounts between
+ * active and inactive states, and opening `AddUserModal` to create new accounts.
+ *
+ * @returns {JSX.Element} The user management table page.
+ */
 export default function UserManagementPage() {
   const [users,   setUsers]   = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [filter,  setFilter]  = useState('all')
+  const [assigning, setAssigning] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleAssignPatients = async () => {
+    setAssigning(true)
+    setMessage('')
+    try {
+      const res = await apiRandomlyAssignPatients()
+      setMessage(res.message || 'Patients randomly assigned successfully!')
+    } catch (err) {
+      setMessage(err?.response?.data?.detail || 'Failed to assign patients')
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   useEffect(() => {
     apiGetUsers().then((u) => { setUsers(u); setLoading(false) })
@@ -25,6 +49,16 @@ export default function UserManagementPage() {
 
   const filtered = filter === 'all' ? users : users.filter((u) => u.role === filter)
 
+  /**
+   * Toggles a user's active/inactive status.
+   *
+   * Calls `apiDeactivateUser` if the user is currently active, or
+   * `apiActivateUser` if inactive, then updates the local users list with the
+   * returned updated user object.
+   *
+   * @param {object} user - The user object whose status should be toggled.
+   * @returns {Promise<void>}
+   */
   const toggleActive = async (user) => {
     const updated = user.is_active
       ? await apiDeactivateUser(user.id)
@@ -45,10 +79,24 @@ export default function UserManagementPage() {
           <h1 className="font-heading font-bold text-2xl text-navy-900">User Management</h1>
           <p className="text-navy-400 text-sm">{users.filter((u) => u.is_active).length} active accounts</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus size={15} /> Add User
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleAssignPatients} loading={assigning}>
+            Randomize Assignments
+          </Button>
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus size={15} /> Add User
+          </Button>
+        </div>
       </div>
+
+      {message && (
+        <div className={clsx(
+          "p-3 rounded-lg text-sm font-medium border",
+          message.toLowerCase().includes('fail') ? "bg-red-50 text-red-700 border-red-200" : "bg-teal-50 text-teal-700 border-teal-200"
+        )}>
+          {message}
+        </div>
+      )}
 
       {/* Role filter */}
       <div className="flex gap-2">
@@ -126,13 +174,45 @@ export default function UserManagementPage() {
   )
 }
 
+/**
+ * Modal dialog for creating a new user account.
+ *
+ * Manages a controlled form with name, email, password, role, and optional
+ * specialty (shown only for the doctor role). On success calls `onCreated`
+ * with the new user object so the parent prepends it to the table.
+ *
+ * @param {object}   props
+ * @param {boolean}  props.isOpen    - Whether the modal is currently open.
+ * @param {Function} props.onClose   - Callback to close the modal without saving.
+ * @param {Function} props.onCreated - Callback invoked with the created user object.
+ * @returns {JSX.Element}
+ */
 function AddUserModal({ isOpen, onClose, onCreated }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'doctor', specialty: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  /**
+   * Curried field-setter factory for the controlled form.
+   *
+   * Returns a change-event handler that updates the named `field` in the
+   * `form` state object while preserving all other field values.
+   *
+   * @param {string} field - The form field key to update.
+   * @returns {Function} An `onChange` handler compatible with input/select elements.
+   */
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
+  /**
+   * Handles the "Create Account" form submission.
+   *
+   * Calls `apiCreateUser` with the current form state and, on success,
+   * forwards the new user to `onCreated`. Displays a server error message
+   * if the request fails.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submit event.
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')

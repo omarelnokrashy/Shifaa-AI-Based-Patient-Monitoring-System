@@ -41,6 +41,17 @@ _ROLES_TO_CREATE = [
 
 
 def run_seed():
+    """
+    Populate the database with test data.
+
+    Phase 1 — Users: creates one user per role (doctor, nurse, admin) using the
+    credentials defined in ``_ROLES_TO_CREATE``.  Existing users with the same
+    e-mail are skipped rather than duplicated.
+
+    Phase 2 — Patients: generates 10 synthetic patients via Faker, each with
+    2 random diagnoses, 2 medications, 3 visits, 2 lab results, and optionally
+    one allergy.
+    """
     Base.metadata.create_all(engine)
     fake    = Faker()
     pwd_ctx = CryptContext(schemes=["bcrypt"])
@@ -160,6 +171,59 @@ def run_seed():
 
         db.commit()
         print(f"Patient {i+1}: {patient.name} (ID: {patient.id})")
+
+    # ── Assign patients to doctors and nurses randomly ───────────────────────
+    print("\nCreating random patient assignments...")
+    patients = db.query(models.Patient).all()
+    doctors = db.query(models.User).filter(models.User.role == "doctor", models.User.is_active == True).all()
+    nurses = db.query(models.User).filter(models.User.role == "nurse", models.User.is_active == True).all()
+
+    if patients and (doctors or nurses):
+        assignments_created = 0
+        def add_assignment(u_id, p_id):
+            nonlocal assignments_created
+            exists = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.user_id == u_id,
+                models.PatientAssignment.patient_id == p_id
+            ).first()
+            if not exists:
+                db.add(models.PatientAssignment(user_id=u_id, patient_id=p_id))
+                assignments_created += 1
+
+        if doctors:
+            for doc in doctors:
+                assigned_pts = random.sample(patients, min(3, len(patients)))
+                for p in assigned_pts:
+                    add_assignment(doc.id, p.id)
+
+        if nurses:
+            for nurse in nurses:
+                assigned_pts = random.sample(patients, min(3, len(patients)))
+                for p in assigned_pts:
+                    add_assignment(nurse.id, p.id)
+
+        if doctors:
+            for p in patients:
+                has_doc = db.query(models.PatientAssignment).join(models.User).filter(
+                    models.PatientAssignment.patient_id == p.id,
+                    models.User.role == "doctor"
+                ).first()
+                if not has_doc:
+                    random_doc = random.choice(doctors)
+                    add_assignment(random_doc.id, p.id)
+
+        if nurses:
+            for p in patients:
+                has_nurse = db.query(models.PatientAssignment).join(models.User).filter(
+                    models.PatientAssignment.patient_id == p.id,
+                    models.User.role == "nurse"
+                ).first()
+                if not has_nurse:
+                    random_nurse = random.choice(nurses)
+                    add_assignment(random_nurse.id, p.id)
+
+        db.commit()
+        print(f"Created {assignments_created} random patient assignments.")
 
     db.close()
     print("\n✅ Seeding complete!")

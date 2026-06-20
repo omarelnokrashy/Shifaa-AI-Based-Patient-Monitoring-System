@@ -12,11 +12,30 @@ import useAuthStore from '../../store/authStore'
 import { apiAcknowledgeAlert } from '../../api/client'
 import useAlertsStore from '../../store/alertsStore'
 
+/**
+ * Displays a sorted, clickable list of patient alerts.
+ * Unacknowledged alerts pulse and are accented with a severity-coloured left border.
+ * Renders a friendly empty state when no alerts are present.
+ *
+ * @param {Object}   props
+ * @param {Array}    [props.alerts=[]]        Array of alert objects to display.
+ * @param {Function} [props.onAcknowledge]    Optional callback fired after an alert is acknowledged,
+ *                                            receiving `(alertId: number)` as argument.
+ * @returns {JSX.Element}
+ */
 export default function AlertFeed({ alerts = [], onAcknowledge }) {
   const navigate = useNavigate()
   const user     = useAuthStore((s) => s.user)
   const ackStore = useAlertsStore((s) => s.acknowledge)
 
+  /**
+   * Acknowledges an alert via the API and updates the local store.
+   * Stops click propagation so the parent `goToPatient` handler is not triggered.
+   *
+   * @param {React.MouseEvent} e      - The click event from the acknowledge button.
+   * @param {Object}           alert  - The alert object to acknowledge.
+   * @returns {Promise<void>}
+   */
   const handleAck = async (e, alert) => {
     e.stopPropagation()
     await apiAcknowledgeAlert(alert.id, user?.id)
@@ -24,6 +43,13 @@ export default function AlertFeed({ alerts = [], onAcknowledge }) {
     onAcknowledge?.(alert.id)
   }
 
+  /**
+   * Navigates to the patient detail page for the given alert.
+   * Builds the route prefix from the current user's role (`/doctor` or `/nurse`).
+   *
+   * @param {Object} alert - The alert object whose `patient_id` is used for navigation.
+   * @returns {void}
+   */
   const goToPatient = (alert) => {
     const prefix = user?.role === 'nurse' ? '/nurse' : '/doctor'
     navigate(`${prefix}/patients/${alert.patient_id}`)
@@ -103,6 +129,15 @@ export default function AlertFeed({ alerts = [], onAcknowledge }) {
   )
 }
 
+/**
+ * Derives a concise, human-readable summary string from an alert's `details` payload.
+ * Returns an empty string for unknown alert types.
+ *
+ * @param {Object} alert              - The alert object.
+ * @param {string} alert.alert_type   - Type discriminator: `'arrhythmia'`, `'fall'`, or `'seizure'`.
+ * @param {Object} [alert.details]    - Type-specific detail payload.
+ * @returns {string} A short summary suitable for inline display.
+ */
 function getAlertSummary(alert) {
   const d = alert.details || {}
   if (alert.alert_type === 'arrhythmia') {

@@ -1,3 +1,23 @@
+"""
+Named Entity Recognition (NER) service
+---------------------------------------
+Extracts structured medical entities from a free-text doctor query so the
+retriever can apply precise database filters.
+
+Primary path: sends the query to the configured LLM (``gpt-4o-mini`` or a local
+Ollama model) with a JSON system prompt that returns a fixed-schema object.
+
+Fallback path (:func:`_extract_entities_local`): if the LLM call fails or times
+out (4 s hard limit), a regex / keyword scan is used instead.
+
+Extracted entity fields:
+  - ``date_range`` — temporal qualifier (e.g., "last 3 months", "last year")
+  - ``condition``  — clinical condition keyword (e.g., "diabetes")
+  - ``drug``       — medication name (e.g., "metformin")
+  - ``lab_test``   — laboratory test name (e.g., "HbA1c")
+  - ``limit``      — integer count qualifier (e.g., 3 from "last 3 visits")
+"""
+
 from openai import OpenAI
 from dotenv import load_dotenv
 import json, os
@@ -30,6 +50,71 @@ Return ONLY a JSON object with these fields (use null if not mentioned):
 Return ONLY valid JSON.
 """
 
+def _extract_entities_local(query: str) -> dict:
+    """
+    Rule-based entity extractor used as a fallback when the LLM is unavailable.
+
+    Uses regular expressions and hard-coded keyword lists to populate a subset of
+    the entity schema.  Only common values are covered; rare entities default to
+    ``None``.
+
+    Parameters
+    ----------
+    query : str
+        The raw doctor query.
+
+    Returns
+    -------
+    dict
+        Keys: ``date_range``, ``condition``, ``drug``, ``lab_test``, ``limit``.
+        Unrecognised fields are ``None``.
+    """
+    q = query.lower()
+    entities = {
+        "date_range": None,
+        "condition": None,
+        "drug": None,
+        "lab_test": None,
+        "limit": None
+    }
+    # Limit
+    import re
+    limit_match = re.search(r'(?:last|recent)\s+(\d+)\s+(?:visit|encounter|record|lab)', q)
+    if limit_match:
+        entities["limit"] = int(limit_match.group(1))
+    
+    # Date range
+    if 'last 3 months' in q:
+        entities["date_range"] = 'last 3 months'
+    elif 'last 6 months' in q:
+        entities["date_range"] = 'last 6 months'
+    elif 'last year' in q or 'past year' in q:
+        entities["date_range"] = 'last year'
+    
+    # Common conditions
+    conditions = ['diabetes', 'hypertension', 'asthma', 'heart failure', 'copd', 'arrhythmia']
+    for c in conditions:
+        if c in q:
+            entities["condition"] = c
+            break
+            
+    # Common drugs
+    drugs = ['metformin', 'amlodipine', 'lisinopril', 'aspirin', 'atorvastatin', 'albuterol', 'insulin']
+    for d in drugs:
+        if d in q:
+            entities["drug"] = d
+            break
+            
+    # Common labs
+    labs = ['hba1c', 'glucose', 'creatinine', 'potassium', 'sodium', 'hemoglobin', 'wbc']
+    for l in labs:
+        if l in q:
+            entities["lab_test"] = l
+            break
+            
+    return entities
+
+
 def extract_entities(query: str) -> dict:
     """
     Extract medical entities from a query string.
@@ -38,15 +123,15 @@ def extract_entities(query: str) -> dict:
     try:
         response = client.chat.completions.create(
             model=MODEL,
-
             response_format={'type': 'json_object'},
             messages=[
                 {'role': 'system', 'content': NER_SYSTEM},
                 {'role': 'user', 'content': query}
             ],
-            temperature=0.0
+            temperature=0.0,
+            timeout=4.0
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f'NER error: {e}')
-        return {'date_range': None, 'condition': None, 'drug': None, 'lab_test': None, 'limit': None}
+        print(f'NER error: {e}. Falling back to rule-based.')
+        return _extract_entities_local(query)

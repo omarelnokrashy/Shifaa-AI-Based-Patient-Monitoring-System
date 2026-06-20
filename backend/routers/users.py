@@ -29,6 +29,12 @@ _admin_only = require_role("admin")
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 class UserCreateRequest(BaseModel):
+    """
+    Payload for creating a new system user account.
+
+    ``role`` must be one of ``doctor``, ``nurse``, or ``admin``.
+    ``specialty`` is optional and relevant only for doctor accounts.
+    """
     name:      str
     email:     str           # EmailStr requires email-validator; using plain str for simplicity
     password:  str
@@ -37,6 +43,7 @@ class UserCreateRequest(BaseModel):
 
 
 class UserOut(BaseModel):
+    """Serialised user record returned by list and create endpoints."""
     id:         int
     name:       str
     email:      str
@@ -137,3 +144,91 @@ def activate_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+# ── POST /api/admin/assign-patients ───────────────────────────────────────────
+@router.post("/assign-patients")
+def assign_patients(
+    db: Session = Depends(get_db),
+    _admin = Depends(_admin_only),
+):
+    """
+    Randomly assign patients to all active doctors and nurses.
+    Clears all previous assignments first.
+    Ensures every active doctor/nurse gets assigned 3 random patients (if available),
+    and that every patient is assigned to at least one doctor and one nurse.
+    """
+    import random
+
+    # Clear all existing assignments
+    db.query(models.PatientAssignment).delete()
+
+    patients = db.query(models.Patient).all()
+    doctors = db.query(models.User).filter(models.User.role == "doctor", models.User.is_active == True).all()
+    nurses = db.query(models.User).filter(models.User.role == "nurse", models.User.is_active == True).all()
+
+    if not patients:
+        db.commit()
+        return {"message": "No patients found in the database. No assignments created."}
+
+    if not doctors and not nurses:
+        db.commit()
+        return {"message": "No active doctors or nurses found. No assignments created."}
+
+    assignments_created = 0
+
+    # Helper to create assignment
+    def add_assignment(u_id, p_id):
+        nonlocal assignments_created
+        # Check if already exists
+        exists = db.query(models.PatientAssignment).filter(
+            models.PatientAssignment.user_id == u_id,
+            models.PatientAssignment.patient_id == p_id
+        ).first()
+        if not exists:
+            db.add(models.PatientAssignment(user_id=u_id, patient_id=p_id))
+            assignments_created += 1
+
+    # 1. Assign to active doctors
+    if doctors:
+        for doc in doctors:
+            # Choose min(3, len(patients)) random patients
+            assigned_pts = random.sample(patients, min(3, len(patients)))
+            for p in assigned_pts:
+                add_assignment(doc.id, p.id)
+
+    # 2. Assign to active nurses
+    if nurses:
+        for nurse in nurses:
+            assigned_pts = random.sample(patients, min(3, len(patients)))
+            for p in assigned_pts:
+                add_assignment(nurse.id, p.id)
+
+    # 3. Ensure every patient is assigned to at least one doctor
+    if doctors:
+        for p in patients:
+            has_doc = db.query(models.PatientAssignment).join(models.User).filter(
+                models.PatientAssignment.patient_id == p.id,
+                models.User.role == "doctor"
+            ).first()
+            if not has_doc:
+                random_doc = random.choice(doctors)
+                add_assignment(random_doc.id, p.id)
+
+    # 4. Ensure every patient is assigned to at least one nurse
+    if nurses:
+        for p in patients:
+            has_nurse = db.query(models.PatientAssignment).join(models.User).filter(
+                models.PatientAssignment.patient_id == p.id,
+                models.User.role == "nurse"
+            ).first()
+            if not has_nurse:
+                random_nurse = random.choice(nurses)
+                add_assignment(random_nurse.id, p.id)
+
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Randomized patient assignments created successfully. Created {assignments_created} assignments."
+    }
+

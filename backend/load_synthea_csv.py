@@ -1,3 +1,21 @@
+"""
+load_synthea_csv.py — Bulk-import Synthea synthetic patient data
+================================================================
+Reads Synthea-generated CSV files from ``DATA_DIR`` and inserts the records
+into the application database, mapping Synthea UUIDs to auto-incremented
+postgresSQL IDs using an in-memory dictionary.
+
+CSV files expected in ``DATA_DIR``:
+  - ``patients_localized.csv``  → ``patients`` table
+  - ``conditions.csv``          → ``diagnoses`` table
+  - ``medications.csv``         → ``medications`` table
+  - ``observations.csv``        → ``lab_results`` table
+  - ``allergies.csv``           → ``allergies`` table
+
+Run directly::
+
+    python load_synthea_csv.py
+"""
 import pandas as pd
 import os
 from sqlalchemy import create_engine
@@ -12,6 +30,19 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 DATA_DIR = "/media/omar/Graduation Project/GP/Project/Data"
 
 def import_data():
+    """
+    Orchestrate the full Synthea CSV import.
+
+    Steps:
+      1. Read ``patients_localized.csv``, insert each patient into the
+         ``patients`` table, and build a ``uuid_map`` (Synthea UUID → DB id).
+      2. Call ``import_related`` for conditions, medications, observations, and
+         allergies, translating Synthea patient UUIDs via ``uuid_map`` before
+         bulk-inserting each chunk.
+
+    Large CSV files (e.g. observations) are processed in chunks of 10 000 rows
+    to keep memory usage low.
+    """
     engine = create_engine(DATABASE_URL)
     print("Starting full Synthea mapping import...")
 
@@ -67,6 +98,18 @@ def import_data():
 
     # 2. Helper to import related data
     def import_related(filename, target_table, mapping_func):
+        """
+        Read *filename* from ``DATA_DIR`` in chunks, filter rows to patients
+        present in ``uuid_map``, apply *mapping_func* to produce a DataFrame
+        with the correct column names, and bulk-insert each chunk into
+        *target_table* using pandas ``to_sql``.
+
+        Args:
+            filename (str): CSV filename relative to ``DATA_DIR``.
+            target_table (str): Database table name to insert into.
+            mapping_func (callable): Takes a chunk DataFrame and returns a new
+                DataFrame shaped for the target table.
+        """
         print(f"Processing {filename}...")
         path = os.path.join(DATA_DIR, filename)
         if not os.path.exists(path):

@@ -34,12 +34,20 @@ _clinical = require_role("doctor", "nurse")
 
 # ── Request / Response schemas ─────────────────────────────────────────────────
 class ECGAnalyzeRequest(BaseModel):
+    """Request body for the ECG analysis endpoint."""
     patient_id: int
     signal: list[list[float]]        # (5000, 12) ECG array
     qrs7:   Optional[list[float]] = None   # Pan-Tompkins 7-feature vector
 
 
 class ECGAnalyzeResponse(BaseModel):
+    """
+    Response returned after ECG classification.
+
+    Carries the two-stage cascade results (stage1 = Normal/Abnormal,
+    stage2 = specific arrhythmia subtype), the alert ID if one was
+    created, and the full probability distribution from the classifier.
+    """
     alert_id:           Optional[int]
     patient_id:         int
     stage1:             Optional[str]
@@ -52,6 +60,7 @@ class ECGAnalyzeResponse(BaseModel):
 
 
 class AlertSummary(BaseModel):
+    """Compact alert record used in the arrhythmia history list response."""
     id:         int
     alert_type: str
     severity:   str
@@ -80,6 +89,14 @@ async def analyze_ecg(
     patient = db.query(models.Patient).filter(models.Patient.id == req.patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    if current_user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned = db.query(models.PatientAssignment).filter(
+            models.PatientAssignment.patient_id == req.patient_id,
+            models.PatientAssignment.user_id == current_user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
 
     # Call the inference microservice
     result = await arrhythmia_client.predict_ecg(req.signal, req.qrs7)
@@ -137,6 +154,14 @@ def get_arrhythmia_history(
     _user = Depends(_clinical),
 ):
     """Return the most recent arrhythmia alerts for a patient."""
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned = db.query(models.PatientAssignment).filter(
+            models.PatientAssignment.patient_id == patient_id,
+            models.PatientAssignment.user_id == _user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status_code=403, detail='Access Denied: Patient is not assigned to you')
+
     return (
         db.query(models.Alert)
         .filter(

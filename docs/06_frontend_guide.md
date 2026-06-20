@@ -156,6 +156,14 @@ Maintains a persistent connection to `ws://localhost:8000/api/ws/alerts` using t
 Manages the connection state for streaming conversational agents and reasoning output.
 *   **Thinking Block Parser**: Listens for the backend `<think>` tags via `think_start`, `think` (chunks), and `think_done` frames. It handles live population of reasoning steps separately from the final answer.
 *   **Mock Stream Simulation**: In `mock` mode, it divides text arrays into small character chunks to simulate network streaming, feeding them back to the chat component on a 25ms timer.
+*   **Server-Sent Events (SSE) Image Streaming**: For image uploads, it opens a POST connection using `/api/chat/analyze-image` and processes the streamed tokens using an SSE event parser, supporting real-time rendering of thinking and visual analysis steps.
+
+### 6.5.3 Image Upload and Preview Panel
+The chat input bar supports attaching medical scans:
+*   **File Attachment Handler**: Integrates a hidden file input triggered by a paperclip/image icon.
+*   **Thumbnail Preview Box**: Displays a preview image and file details directly above the text box prior to submission, with a button to remove the selection.
+*   **Scan Type Selector**: An inline dropdown to select the type of scan (e.g. Chest X-Ray, CT/MRI, Lab Report) to feed domain-specific templates to the LLM.
+*   **Inline Bubble Rendering**: Once sent, the uploaded image is rendered inside the user bubble within the chat transcript.
 
 ---
 

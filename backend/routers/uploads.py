@@ -1,9 +1,23 @@
+"""
+Image analysis upload router
+-----------------------------
+Accepts multipart-encoded medical images from authenticated doctors and
+streams MedGemma's analysis back to the client using Server-Sent Events (SSE).
+
+Supported image types: xray, ct_mri, lab_report, handwritten, dermatology, general.
+
+Endpoints
+---------
+POST /api/chat/analyze-image  — upload an image and stream the analysis response
+"""
+
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
 import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from ..database import get_db
@@ -66,9 +80,25 @@ async def analyze_image(
     patient = None
     if patient_id:
         patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        if doctor.role in (models.UserRole.doctor, models.UserRole.nurse):
+            assigned = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.patient_id == patient_id,
+                models.PatientAssignment.user_id == doctor.id
+            ).first()
+            if not assigned:
+                raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
 
     # Stream via SSE — uses async iteration to avoid blocking the event loop
     async def event_stream():
+        """
+        Async generator that streams MedGemma tokens to the client as
+        Server-Sent Events (SSE).  Handles the full think/answer split
+        protocol: buffers the initial output to detect '<think>' /
+        '<unused94>' / 'thought ...' prefixes, then emits typed JSON
+        events (think_start, think, think_done, chunk, done, error).
+        """
         try:
             in_think       = False
             format_decided = False

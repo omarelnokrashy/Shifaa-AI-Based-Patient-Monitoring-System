@@ -13,6 +13,19 @@ import { MOCK_ALERTS } from '../mock/data'
 const IS_MOCK = import.meta.env.VITE_DATA_MODE !== 'live'
 const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
 
+/**
+ * React hook that opens (and maintains) a WebSocket connection to the alerts
+ * endpoint and feeds incoming events into the global alerts store.
+ *
+ * **Side effects:**
+ * - In live mode: opens a WebSocket to `WS_BASE/api/ws/alerts?token=…` and
+ *   reconnects with exponential back-off (up to 30 s) on close/error.
+ * - In mock mode: injects a synthetic alert from the mock dataset every 25 s
+ *   via `setInterval`.
+ * - Both modes clean up their timers / socket on unmount or token change.
+ *
+ * @returns {void} State changes are dispatched directly to `useAlertsStore`.
+ */
 export function useAlertsWS() {
   const token   = useAuthStore((s) => s.token)
   const addAlert = useAlertsStore((s) => s.addAlert)
@@ -36,6 +49,11 @@ export function useAlertsWS() {
 
     let cancelled = false
 
+    /**
+     * Open a new WebSocket connection. Called immediately on mount and
+     * recursively scheduled after each unexpected close, using exponential
+     * back-off capped at 30 seconds.
+     */
     const connect = () => {
       if (cancelled) return
       const ws = new WebSocket(`${WS_BASE}/api/ws/alerts?token=${token}`)

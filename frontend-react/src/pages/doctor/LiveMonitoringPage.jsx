@@ -21,6 +21,16 @@ import { clsx } from 'clsx'
 
 const IS_MOCK = import.meta.env.VITE_DATA_MODE !== 'live'
 
+/**
+ * Live Monitoring page component.
+ *
+ * Displays a responsive card grid of all active fall/seizure monitoring sessions.
+ * In mock mode (`VITE_DATA_MODE !== 'live'`) it uses static fixture data; in live
+ * mode it polls `/api/monitoring/status` via the dashboard endpoint every 5 seconds.
+ * A separate interval counts down the 30-second seizure latch window per session.
+ *
+ * @returns {JSX.Element} The live monitoring grid view.
+ */
 export default function LiveMonitoringPage() {
   const navigate  = useNavigate()
   const [sessions, setSessions] = useState([])
@@ -35,6 +45,13 @@ export default function LiveMonitoringPage() {
       return
     }
     // Live: poll /api/monitoring/status every 5 s
+    /**
+     * Fetches active fall and seizure sessions from the dashboard API and
+     * merges them into a single flat list annotated with a `type` field.
+     *
+     * @async
+     * @returns {Promise<void>}
+     */
     const fetchSessions = async () => {
       const { apiGetDashboard } = await import('../../api/client')
       const d = await apiGetDashboard()
@@ -93,6 +110,20 @@ export default function LiveMonitoringPage() {
   )
 }
 
+/**
+ * Card representing a single active monitoring session.
+ *
+ * Applies visual states based on session status:
+ *  - Pulsing red border when a SEIZURE or FALL_DETECTED alert is active.
+ *  - Amber border and a countdown progress bar during the 30-second latch window.
+ *  - Neutral card otherwise.
+ *
+ * @param {object}   props
+ * @param {object}   props.session      - Session data object (type, patient_name, status, etc.).
+ * @param {number}   props.latchSeconds - Seconds remaining in the alert hold window (0 = no latch).
+ * @param {Function} props.onNavigate   - Callback invoked when the card is clicked to navigate to the patient.
+ * @returns {JSX.Element}
+ */
 function SessionCard({ session, latchSeconds, onNavigate }) {
   const isAlert    = session.status === 'SEIZURE' || session.status === 'FALL_DETECTED'
   const isLatched  = latchSeconds > 0 && !isAlert
