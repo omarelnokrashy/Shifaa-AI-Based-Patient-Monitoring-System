@@ -39,6 +39,8 @@ No drug interactions with current medications (Amlodipine). Penicillin allergy d
  * - **Live text** (`!IS_MOCK && no image`): opens a WebSocket to `/api/chat/stream`.
  * - **Image** (any mode): POSTs a `multipart/form-data` request and reads an SSE stream.
  *
+ * @param {Array<object>} [initialMessages=[]] - Messages to seed the conversation
+ *   with (used when restoring a saved session). Only read on mount.
  * @returns {{
  *   messages:    Array<{role: string, content: string, id: number|string, streaming?: boolean, isError?: boolean, image?: string}>,
  *   isThinking:  boolean,
@@ -49,11 +51,11 @@ No drug interactions with current medications (Amlodipine). Penicillin allergy d
  *   clearMessages: Function
  * }}
  */
-export function useChatStream() {
+export function useChatStream(initialMessages = []) {
   const token = useAuthStore((s) => s.token)
   const wsRef = useRef(null)
 
-  const [messages,    setMessages]    = useState([])
+  const [messages,    setMessages]    = useState(initialMessages)
   const [isThinking,  setIsThinking]  = useState(false)
   const [thinkText,   setThinkText]   = useState('')
   const [thinkDone,   setThinkDone]   = useState(null)  // { text, duration }

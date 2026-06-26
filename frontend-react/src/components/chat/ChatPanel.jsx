@@ -3,12 +3,20 @@
  *
  * Features:
  * - Mode switch: Patient Q&A (uses patient context) / General Q&A
+ * - In-header patient picker (Patient Q&A mode) so the context can be chosen
+ *   without leaving the chat
  * - Token-by-token streaming via useChatStream hook
  * - Collapsible reasoning block: auto-expands while thinking, auto-collapses
  *   with "Thought for X.Xs" label once done
  * - Markdown rendering for bot messages (react-markdown + remark-gfm)
  * - Image upload modal trigger for X-ray/CT/lab report analysis
  * - Auto-scroll to latest message
+ * - Persists settled conversations upward via `onPersist` (used by the Ask AI
+ *   page to save chat history); restores a saved conversation via
+ *   `initialMessages`
+ *
+ * Mode and patient selection are controlled by the parent so the surrounding
+ * page can manage saved-session context.
  */
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -24,13 +32,26 @@ import Button from '../ui/Button'
  * @param {Object} props
  * @param {Object|null} [props.patient]          The currently selected patient object (id, name, etc.).
  *                                               When provided, Patient Q&A mode uses their medical context.
- * @param {'patient'|'general'} [props.mode='patient'] Initial chat mode.
+ * @param {Array<Object>} [props.patients=[]]    Patients available in the header picker (Patient Q&A mode).
+ * @param {'patient'|'general'} [props.mode='patient'] The active chat mode (controlled).
  *   - `'patient'`  — sends patient context alongside the query.
  *   - `'general'`  — general medical Q&A without patient context.
+ * @param {(mode:'patient'|'general')=>void} [props.onModeChange] Called when the user toggles the mode.
+ * @param {(patient:Object|null)=>void} [props.onSelectPatient]   Called when the user picks a patient.
+ * @param {Array<Object>} [props.initialMessages=[]] Messages to restore a saved session with.
+ * @param {(messages:Array<Object>)=>void} [props.onPersist]      Called with the settled message list
+ *   after each completed exchange, so the parent can snapshot history.
  * @returns {JSX.Element}
  */
-export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
-  const [mode, setMode] = useState(initialMode)
+export default function ChatPanel({
+  patient = null,
+  patients = [],
+  mode = 'patient',
+  onModeChange,
+  onSelectPatient,
+  initialMessages = [],
+  onPersist,
+}) {
   const [input, setInput] = useState('')
   const [thinkExpanded, setThinkExpanded] = useState(false)
   const bottomRef = useRef(null)
@@ -41,8 +62,15 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
 
   const {
     messages, isThinking, thinkText, thinkDone, isStreaming,
-    sendMessage, clearMessages,
-  } = useChatStream()
+    sendMessage,
+  } = useChatStream(initialMessages)
+
+  // Baseline signature of the restored conversation so the initial render
+  // (which re-emits `initialMessages`) doesn't re-save an unchanged session.
+  const baseline = useRef({
+    len: initialMessages.length,
+    lastId: initialMessages.length ? initialMessages[initialMessages.length - 1].id : null,
+  })
 
   // Auto-expand reasoning while thinking, auto-collapse once done
   useEffect(() => { if (isThinking) setThinkExpanded(true)  }, [isThinking])
@@ -52,6 +80,31 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isThinking, thinkText])
+
+  // Focus the composer when a fresh conversation opens (e.g. "New Chat") so the
+  // user can type immediately. Skip when resuming a session that has messages.
+  useEffect(() => {
+    if (initialMessages.length === 0) textareaRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist the conversation whenever an exchange settles (not mid-stream).
+  useEffect(() => {
+    if (!onPersist) return
+    if (isStreaming || isThinking) return
+    if (messages.length === 0) return
+    const lastId = messages[messages.length - 1].id
+    // Skip the no-op persist for a freshly restored, unchanged session.
+    if (messages.length === baseline.current.len && lastId === baseline.current.lastId) return
+    onPersist(messages)
+  }, [messages, isStreaming, isThinking, onPersist])
+
+  // Ensure a restored/deep-linked patient is always selectable even if not in
+  // the supplied `patients` list (e.g. assigned to another role, or removed).
+  const patientOptions =
+    patient && !patients.some((p) => String(p.id) === String(patient.id))
+      ? [patient, ...patients]
+      : patients
 
   /**
    * Handles file selection from the hidden file input.
@@ -100,29 +153,57 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
+  const needsPatient = mode === 'patient' && !patient
+
   return (
     <div className="flex flex-col h-full bg-navy-50 rounded-xl overflow-hidden border border-navy-100">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-navy-100">
-        <div className="flex items-center gap-1 bg-navy-100 rounded-lg p-1">
-          {['patient', 'general'].map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); clearMessages() }}
-              className={clsx(
-                'px-3 py-1.5 rounded-md text-sm font-medium transition-all',
-                mode === m
-                  ? 'bg-white text-navy-900 shadow-sm'
-                  : 'text-navy-500 hover:text-navy-700',
-              )}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white border-b border-navy-100">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Mode toggle */}
+          <div className="flex items-center gap-1 bg-navy-100 rounded-lg p-1 shrink-0">
+            {['patient', 'general'].map((m) => (
+              <button
+                key={m}
+                onClick={() => onModeChange?.(m)}
+                className={clsx(
+                  'px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+                  mode === m
+                    ? 'bg-white text-navy-900 shadow-sm'
+                    : 'text-navy-500 hover:text-navy-700',
+                )}
+              >
+                {m === 'patient' ? 'Patient Q&A' : 'General Q&A'}
+              </button>
+            ))}
+          </div>
+
+          {/* Patient picker (Patient Q&A only) */}
+          {mode === 'patient' && (
+            <select
+              value={patient?.id ?? ''}
+              onChange={(e) => {
+                const val = e.target.value
+                onSelectPatient?.(
+                  val ? patientOptions.find((p) => String(p.id) === String(val)) || null : null,
+                )
+              }}
+              className="min-w-0 max-w-[200px] truncate text-sm bg-navy-50 border border-navy-200 rounded-lg
+                         px-2.5 py-1.5 text-navy-800 focus:outline-none focus:ring-2 focus:ring-teal-500
+                         focus:border-teal-500 cursor-pointer"
+              title="Patient context"
             >
-              {m === 'patient' ? (patient ? `${patient.name.split(' ')[0]} Q&A` : 'Patient Q&A') : 'General Q&A'}
-            </button>
-          ))}
+              <option value="">Select patient…</option>
+              {patientOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          )}
         </div>
+
         {mode === 'patient' && patient && (
-          <span className="text-xs text-navy-400 font-mono">
+          <span className="text-xs text-navy-400 font-mono shrink-0">
             ID #{patient.id}
           </span>
         )}
@@ -134,13 +215,20 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <Brain size={36} className="text-navy-300 mb-3" />
             <p className="text-navy-400 font-medium text-sm">
-              {mode === 'patient' && patient
-                ? `Ask me anything about ${patient.name}'s history.`
+              {mode === 'patient'
+                ? (patient
+                    ? `Ask me anything about ${patient.name}'s history.`
+                    : 'Select a patient above to ask about their history.')
                 : 'Ask a general medical question.'}
             </p>
             {mode === 'patient' && patient && (
               <p className="text-navy-300 text-xs mt-1">
                 I have access to diagnoses, medications, labs, and visit notes.
+              </p>
+            )}
+            {needsPatient && (
+              <p className="text-navy-300 text-xs mt-1">
+                Or switch to <span className="font-medium">General Q&A</span> for non-patient questions.
               </p>
             )}
           </div>
@@ -248,8 +336,10 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              mode === 'patient' && patient
-                ? `Ask about ${patient.name}… (Enter to send)`
+              mode === 'patient'
+                ? (patient
+                    ? `Ask about ${patient.name}… (Enter to send)`
+                    : 'Select a patient first… (Enter to send)')
                 : 'Ask a general medical question… (Enter to send)'
             }
             className="flex-1 resize-none px-3 py-2 text-sm bg-navy-50 border border-navy-200 rounded-lg

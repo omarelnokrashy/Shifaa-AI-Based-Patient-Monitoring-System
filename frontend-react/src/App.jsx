@@ -32,6 +32,9 @@ import PatientDetailPage  from './pages/doctor/PatientDetailPage'
 import LiveMonitoringPage from './pages/doctor/LiveMonitoringPage'
 import SandboxTestPage    from './pages/doctor/SandboxTestPage'
 
+// Shared
+import AskAIPage from './pages/chat/AskAIPage'
+
 
 // Nurse
 import NurseDashboard from './pages/nurse/NurseDashboard'
@@ -104,6 +107,7 @@ export default function App() {
           <Route path="/doctor/dashboard"            element={<DoctorDashboard />} />
           <Route path="/doctor/patients"             element={<PatientListPage />} />
           <Route path="/doctor/patients/:id"         element={<PatientDetailPage />} />
+          <Route path="/doctor/chat"                 element={<AskAIPage />} />
           <Route path="/doctor/monitoring"           element={<LiveMonitoringPage />} />
           <Route path="/doctor/sandbox"              element={<SandboxTestPage />} />
 
@@ -118,6 +122,7 @@ export default function App() {
               enforced by the API (nurses can't run ECG analysis, etc.) */}
           <Route path="/nurse/patients"    element={<PatientListPage />} />
           <Route path="/nurse/patients/:id" element={<PatientDetailPage />} />
+          <Route path="/nurse/chat"        element={<AskAIPage />} />
         </Route>
       </Route>
 

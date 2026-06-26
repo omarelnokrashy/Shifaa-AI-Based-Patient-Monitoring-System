@@ -12,7 +12,6 @@ import {
 import Card, { CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { SeverityBadge } from '../../components/ui/Badge'
-import ChatPanel from '../../components/chat/ChatPanel'
 import ECGChart, { ArrhythmiaResultCard } from '../../components/ecg/ECGChart'
 import AlertFeed from '../../components/monitoring/AlertFeed'
 import { apiGetPatient, apiGetAlerts, apiAnalyzeECG } from '../../api/client'
@@ -23,7 +22,6 @@ import useAuthStore from '../../store/authStore'
 
 const TABS = [
   { id: 'overview',    label: 'Overview',   Icon: User },
-  { id: 'chat',        label: 'Chat',        Icon: MessageSquare },
   { id: 'ecg',         label: 'ECG / Arrhythmia', Icon: HeartPulse },
   { id: 'monitoring',  label: 'Monitoring',  Icon: Activity },
 ]
@@ -32,8 +30,8 @@ const TABS = [
  * Patient Detail page — tabbed deep-dive for a single patient.
  *
  * Loads patient data and alert history in parallel on mount. Renders a tab bar
- * (Overview, Chat, ECG, Monitoring) and conditionally shows the Chat tab only
- * for the doctor role. Nurses receive a read-only view of the same page.
+ * (Overview, ECG, Monitoring) plus an "Ask" action that jumps to the Ask AI
+ * page with this patient pre-loaded as the chat context.
  *
  * @returns {JSX.Element} The full patient detail view, or a loading/not-found state.
  */
@@ -45,6 +43,7 @@ export default function PatientDetailPage() {
   const [alerts, setAlerts]   = useState([])
   const [loading, setLoading] = useState(true)
   const user                  = useAuthStore((s) => s.user)
+  const basePath              = user?.role === 'nurse' ? '/nurse' : '/doctor'
 
   useEffect(() => {
     Promise.all([
@@ -58,10 +57,7 @@ export default function PatientDetailPage() {
   if (loading) return <LoadingState />
   if (!patient) return <p className="text-navy-400 p-8">Patient not found.</p>
 
-  const availableTabs = TABS.filter(t => {
-    if (t.id === 'chat' && user?.role === 'nurse') return false
-    return true
-  })
+  const availableTabs = TABS
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
@@ -109,15 +105,22 @@ export default function PatientDetailPage() {
             {label}
           </button>
         ))}
+
+        {/* Ask AI — opens the chat workspace with this patient as context */}
+        <span className="w-px self-stretch bg-navy-100 mx-1" aria-hidden="true" />
+        <button
+          onClick={() => navigate(`${basePath}/chat?patient=${patient.id}`)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-teal-700
+                     hover:bg-teal-50 transition-all"
+          title={`Ask AI about ${patient.name}`}
+        >
+          <MessageSquare size={14} />
+          Ask
+        </button>
       </div>
 
       {/* Tab content */}
       {tab === 'overview'   && <OverviewTab patient={patient} />}
-      {tab === 'chat'       && user?.role !== 'nurse' && (
-        <div className="h-[600px]">
-          <ChatPanel patient={patient} />
-        </div>
-      )}
       {tab === 'ecg'        && <ECGTab patient={patient} />}
       {tab === 'monitoring' && <MonitoringTab patient={patient} alerts={alerts} />}
     </div>

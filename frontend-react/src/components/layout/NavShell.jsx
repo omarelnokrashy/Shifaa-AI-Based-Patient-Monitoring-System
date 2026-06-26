@@ -13,7 +13,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   LayoutDashboard, Users, Activity, Bell, Settings,
-  HeartPulse, LogOut, Menu, X, ChevronRight, Camera
+  HeartPulse, LogOut, Menu, X, ChevronRight, Camera, Sparkles
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import useAlertsStore from '../../store/alertsStore'
@@ -24,12 +24,14 @@ const NAV_ITEMS = {
   doctor: [
     { to: '/doctor/dashboard',  label: 'Dashboard',   Icon: LayoutDashboard },
     { to: '/doctor/patients',   label: 'Patients',    Icon: Users },
+    { to: '/doctor/chat',       label: 'Ask AI',      Icon: Sparkles },
     { to: '/doctor/monitoring', label: 'Live Monitor',Icon: Activity },
     { to: '/doctor/sandbox',    label: 'Sandbox Test',Icon: Camera },
   ],
   nurse: [
     { to: '/nurse/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
     { to: '/nurse/patients',  label: 'Patients',  Icon: Users },
+    { to: '/nurse/chat',      label: 'Ask AI',    Icon: Sparkles },
   ],
   admin: [
     { to: '/admin/dashboard', label: 'System',       Icon: Settings },
