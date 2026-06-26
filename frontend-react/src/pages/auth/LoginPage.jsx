@@ -5,13 +5,13 @@
  * On successful login the JWT is stored via `useAuthStore` and the user is
  * redirected to their role-appropriate dashboard using `ROLE_REDIRECT`.
  */
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HeartPulse, Eye, EyeOff, ShieldCheck } from 'lucide-react'
-import useAuthStore from '../../store/authStore'
 import { apiLogin } from '../../api/client'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import useAuthStore from '../../store/authStore'
 
 /**
  * Maps each user role to its landing dashboard route.
@@ -76,10 +76,8 @@ export default function LoginPage() {
       {/* ── Left panel: brand ──────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[45%] flex-col justify-between p-12 bg-gradient-to-br from-navy-900 via-navy-950 to-teal-900/30">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center">
-            <HeartPulse size={22} className="text-white" />
-          </div>
-          <span className="font-heading font-bold text-white text-lg">MedMonitor</span>
+          <img src="/Logo.png" alt="Shifaa Logo" className="w-10 h-10 rounded-xl object-contain shrink-0" />
+          <span className="font-dejavu font-bold text-white text-2xl">Shifaa</span>
         </div>
 
         <div>
@@ -94,8 +92,8 @@ export default function LoginPage() {
           <div className="mt-8 grid grid-cols-3 gap-4">
             {[
               { label: 'Arrhythmia', sublabel: 'ECG cascade', color: 'text-teal-400' },
-              { label: 'Fall',       sublabel: 'Vision AI',   color: 'text-teal-300' },
-              { label: 'Seizure',    sublabel: 'VSViG+CJ',    color: 'text-teal-200' },
+              { label: 'Fall',       sublabel: 'CTR-GCN',   color: 'text-teal-300' },
+              { label: 'Seizure',    sublabel: 'Vision Transformer',    color: 'text-teal-200' },
             ].map(({ label, sublabel, color }) => (
               <div key={label} className="bg-navy-900/60 rounded-xl p-4 border border-navy-800">
                 <p className={`font-heading font-bold text-sm ${color}`}>{label}</p>
@@ -115,10 +113,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile brand */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center">
-              <HeartPulse size={18} className="text-white" />
-            </div>
-            <span className="font-heading font-bold text-white text-base">MedMonitor</span>
+            <img src="/Logo.png" alt="Shifaa Logo" className="w-8 h-8 rounded-lg object-contain shrink-0" />
+            <span className="font-dejavu font-bold text-white text-xl">Shifaa</span>
           </div>
 
           <div className="bg-white rounded-2xl p-8 border border-navy-200 shadow-xl">

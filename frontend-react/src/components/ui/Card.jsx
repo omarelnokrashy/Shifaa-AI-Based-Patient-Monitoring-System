@@ -1,6 +1,6 @@
 /**
  * @file Card.jsx
- * @description Surface container components used throughout the MedMonitor UI.
+ * @description Surface container components used throughout the Shifaa UI.
  *
  * - `Card`       — a padded, rounded white card with a subtle fade-in animation.
  * - `CardHeader` — a standardised header row with optional icon, title, subtitle,

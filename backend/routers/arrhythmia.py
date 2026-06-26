@@ -174,6 +174,69 @@ def get_arrhythmia_history(
     )
 
 
+import os
+import wfdb
+import scipy.signal
+
+ECG_DIR = "F:/GP/Deployment/Medical-History-Chatbot/uploads/ECG_Signals"
+
+@router.get("/sandbox/signals")
+async def get_sandbox_signals(current_user: models.User = Depends(_clinical)):
+    """
+    List all available WFDB record names in the ECG_Signals directory.
+    Returns a list of strings, e.g. ["02000_lr", "02001_lr", ...]
+    """
+    if not os.path.exists(ECG_DIR):
+        return []
+    
+    # Find all .hea files and extract the record names
+    records = []
+    for file in os.listdir(ECG_DIR):
+        if file.endswith(".hea"):
+            record_name = file[:-4]
+            # Verify the corresponding .dat file exists
+            if os.path.exists(os.path.join(ECG_DIR, record_name + ".dat")):
+                records.append(record_name)
+                
+    records.sort()
+    return records
+
+
+@router.get("/sandbox/signals/{record_name}")
+async def get_sandbox_signal_data(
+    record_name: str,
+    current_user: models.User = Depends(_clinical)
+):
+    """
+    Read the specified WFDB record, resample it to (5000, 12) shape,
+    and return the signal list along with signal metadata.
+    """
+    record_path = os.path.join(ECG_DIR, record_name)
+    if not os.path.exists(record_path + ".hea") or not os.path.exists(record_path + ".dat"):
+        raise HTTPException(status_code=404, detail="ECG record not found")
+        
+    try:
+        # Read signal
+        record, fields = wfdb.rdsamp(record_path)
+        
+        # Resample from 1000 (or whatever original shape) to 5000 samples
+        original_samples = record.shape[0]
+        resampled = scipy.signal.resample(record, 5000, axis=0)
+        
+        # Convert to list of lists
+        signal_data = resampled.tolist()
+        
+        return {
+            "record_name": record_name,
+            "original_samples": original_samples,
+            "sampling_rate": fields.get("fs", 100),
+            "signal": signal_data,
+            "leads": fields.get("sig_name", ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"])
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load ECG signal: {exc}")
+
+
 def _arrhythmia_severity(stage2_class: Optional[str], confidence: float) -> str:
     """
     Map the arrhythmia type to a clinical severity level.

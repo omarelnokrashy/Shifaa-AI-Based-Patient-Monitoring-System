@@ -8,16 +8,23 @@
  * Navigation items are filtered by role so doctors, nurses, and admins each
  * see only the sections relevant to them — no separate apps, one shell.
  */
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
-  LayoutDashboard, Users, Activity, Bell, Settings,
-  HeartPulse, LogOut, Menu, X, ChevronRight, Camera
+  Activity, Bell,
+  Camera,
+  ChevronRight,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Settings,
+  Users,
+  Layers
 } from 'lucide-react'
-import useAuthStore from '../../store/authStore'
-import useAlertsStore from '../../store/alertsStore'
+import { useState } from 'react'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAlertsWS } from '../../hooks/useAlertsWS'
+import useAlertsStore from '../../store/alertsStore'
+import useAuthStore from '../../store/authStore'
 
 // ── Nav items definitions ─────────────────────────────────────────────────────
 const NAV_ITEMS = {
@@ -25,15 +32,19 @@ const NAV_ITEMS = {
     { to: '/doctor/dashboard',  label: 'Dashboard',   Icon: LayoutDashboard },
     { to: '/doctor/patients',   label: 'Patients',    Icon: Users },
     { to: '/doctor/monitoring', label: 'Live Monitor',Icon: Activity },
+    { to: '/doctor/chat',       label: 'Global Chat', Icon: MessageSquare },
     { to: '/doctor/sandbox',    label: 'Sandbox Test',Icon: Camera },
   ],
   nurse: [
-    { to: '/nurse/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-    { to: '/nurse/patients',  label: 'Patients',  Icon: Users },
+    { to: '/nurse/dashboard',  label: 'Dashboard',    Icon: LayoutDashboard },
+    { to: '/nurse/patients',   label: 'Patients',     Icon: Users },
+    { to: '/nurse/monitoring', label: 'Live Monitor', Icon: Activity },
   ],
   admin: [
-    { to: '/admin/dashboard', label: 'System',       Icon: Settings },
-    { to: '/admin/users',     label: 'Users',         Icon: Users },
+    { to: '/admin/dashboard',  label: 'System',       Icon: Settings },
+    { to: '/admin/users',      label: 'Users',         Icon: Users },
+    { to: '/admin/monitoring', label: 'Live Monitor', Icon: Activity },
+    { to: '/admin/rooms',      label: 'Rooms Config', Icon: Layers },
   ],
 }
 
@@ -82,14 +93,11 @@ export default function NavShell() {
           collapsed ? 'w-16' : 'w-60',
         )}
       >
-        {/* Logo / brand */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-navy-800">
-          <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center shrink-0">
-            <HeartPulse size={18} className="text-white" />
-          </div>
+          <img src="/Logo.png" alt="Shifaa Logo" className="w-8 h-8 rounded-lg object-contain shrink-0" />
           {!collapsed && (
             <div className="overflow-hidden">
-              <p className="font-heading font-bold text-white text-sm leading-tight truncate">MedMonitor</p>
+              <p className="font-dejavu font-bold text-white text-xl leading-tight truncate">Shifaa</p>
               <p className="text-navy-400 text-xs truncate capitalize">{user?.role} portal</p>
             </div>
           )}
@@ -164,8 +172,8 @@ export default function NavShell() {
         {/* Top bar (breadcrumb + user actions) */}
         <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-navy-100 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-navy-500">
-            <HeartPulse size={14} className="text-teal-600" />
-            <span className="font-medium text-navy-700">MedMonitor</span>
+            <img src="/LogonoTitle.png" alt="Shifaa Logo" className="w-5 h-5 object-contain" />
+            <span className="font-dejavu font-bold text-base text-navy-800">Shifaa</span>
             <ChevronRight size={14} />
             <span className="capitalize">{user?.role}</span>
           </div>

@@ -23,20 +23,18 @@ import useAlertsStore from '../../store/alertsStore'
  */
 export default function NurseDashboard() {
   const navigate     = useNavigate()
-  const [alerts, setAlerts]   = useState([])
   const [patients, setPatients] = useState([])
-  const liveAlerts   = useAlertsStore((s) => s.alerts)
+  const alerts       = useAlertsStore((s) => s.alerts)
+  const setStoreAlerts = useAlertsStore((s) => s.setAlerts)
 
   useEffect(() => {
     Promise.all([apiGetAlerts(), apiGetPatients()]).then(([a, p]) => {
-      setAlerts(a); setPatients(p)
+      setStoreAlerts(a || [])
+      setPatients(p)
     })
-  }, [])
+  }, [setStoreAlerts])
 
-  const allAlerts = [...liveAlerts, ...alerts]
-    .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
+  const allAlerts = [...alerts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   const unacknowledged = allAlerts.filter((a) => !a.acknowledged)
 
   return (

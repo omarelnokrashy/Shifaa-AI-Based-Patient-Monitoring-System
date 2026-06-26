@@ -1,6 +1,6 @@
 /**
  * @file Input.jsx
- * @description Form field components for the MedMonitor UI.
+ * @description Form field components for the Shifaa UI.
  *
  * - `Input`  — a labelled text input with optional error and hint messages.
  * - `Select` — a labelled native `<select>` with matching visual styling.

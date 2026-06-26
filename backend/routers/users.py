@@ -25,6 +25,7 @@ from .. import models
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 _admin_only = require_role("admin")
+_admin_or_doctor = require_role("admin", "doctor")
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ class UserOut(BaseModel):
 def list_users(
     role: Optional[str] = None,
     db: Session = Depends(get_db),
-    _admin = Depends(_admin_only),
+    _user = Depends(_admin_or_doctor),
 ):
     """Return all user accounts.  Optionally filter by role=doctor|nurse|admin."""
     q = db.query(models.User)

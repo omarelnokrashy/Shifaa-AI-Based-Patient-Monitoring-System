@@ -36,12 +36,20 @@ export function useAlertsWS() {
   useEffect(() => {
     if (!token) return
 
+    const playAlarm = () => {
+      useAlertsStore.getState().playAlarmSound()
+    }
+
     if (IS_MOCK) {
       // Simulate a live alert arriving every ~25 s in mock mode
       let idx = 0
       timerRef.current = setInterval(() => {
         const a = MOCK_ALERTS[idx % MOCK_ALERTS.length]
-        addAlert({ ...a, id: Date.now(), created_at: new Date().toISOString(), acknowledged: false })
+        const mockAlert = { ...a, id: Date.now(), created_at: new Date().toISOString(), acknowledged: false }
+        addAlert(mockAlert)
+        if (mockAlert.alert_type === 'seizure' || mockAlert.alert_type === 'fall') {
+          playAlarm()
+        }
         idx++
       }, 25000)
       return () => clearInterval(timerRef.current)
@@ -62,7 +70,16 @@ export function useAlertsWS() {
       ws.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data)
-          if (event.type === 'alert') addAlert(event)
+          if (event.type === 'alert') {
+            addAlert(event)
+            if (event.alert_type === 'seizure' || event.alert_type === 'fall') {
+              playAlarm()
+            }
+          } else if (event.type === 'acknowledge') {
+            useAlertsStore.getState().acknowledge(event.id)
+          } else if (['cancel', 'expire'].includes(event.type)) {
+            useAlertsStore.getState().removeAlert(event.id)
+          }
         } catch {/* ignore malformed frames */}
       }
 

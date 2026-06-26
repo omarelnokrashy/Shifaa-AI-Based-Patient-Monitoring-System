@@ -2,6 +2,36 @@
  * A shared time utility — avoids a date-fns dependency for just one function.
  */
 /**
+ * Convert a date-time string (potentially naive UTC) into a correct Javascript Date object.
+ *
+ * @param {string|null|undefined} isoString - Date-time string.
+ * @returns {Date|null}
+ */
+export function parseUTCDate(isoString) {
+  if (!isoString) return null
+  let dateStr = isoString
+  if (typeof dateStr === 'string' && !dateStr.endsWith('Z')) {
+    const tIndex = dateStr.indexOf('T')
+    if (tIndex !== -1) {
+      const timePart = dateStr.slice(tIndex)
+      if (!timePart.includes('+') && !timePart.includes('-')) {
+        dateStr = dateStr + 'Z'
+      }
+    } else if (!dateStr.includes(' ')) {
+      // Just a date, e.g. "2026-06-25"
+    } else {
+      // Has space instead of T, e.g. "2026-06-25 22:47:38"
+      const spaceIndex = dateStr.indexOf(' ')
+      const timePart = dateStr.slice(spaceIndex)
+      if (!timePart.includes('+') && !timePart.includes('-')) {
+        dateStr = dateStr.replace(' ', 'T') + 'Z'
+      }
+    }
+  }
+  return new Date(dateStr)
+}
+
+/**
  * Convert an ISO 8601 timestamp to a human-readable relative time string.
  *
  * @param {string|null|undefined} isoString - ISO 8601 date-time string (e.g. `"2026-06-20T14:00:00Z"`).
@@ -10,7 +40,9 @@
  */
 export function formatDistanceToNow(isoString) {
   if (!isoString) return ''
-  const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
+  const parsed = parseUTCDate(isoString)
+  if (!parsed) return ''
+  const diff = Math.floor((Date.now() - parsed.getTime()) / 1000)
   if (diff < 60)   return 'Just now'
   if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
@@ -25,7 +57,9 @@ export function formatDistanceToNow(isoString) {
  */
 export function formatDate(isoString) {
   if (!isoString) return '—'
-  return new Date(isoString).toLocaleDateString('en-GB', {
+  const parsed = parseUTCDate(isoString)
+  if (!parsed) return '—'
+  return parsed.toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric'
   })
 }

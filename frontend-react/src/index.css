@@ -72,3 +72,7 @@
     @apply bg-teal-600/20 text-teal-300 hover:bg-teal-600/30 hover:text-teal-200;
   }
 }
+
+.font-dejavu {
+  font-family: 'DejaVu Sans', sans-serif;
+}

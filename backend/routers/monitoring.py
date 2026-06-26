@@ -42,6 +42,17 @@ _clinical = require_role("doctor", "nurse")
 _any_auth = require_role("doctor", "nurse", "admin")
 
 
+def _parse_patient_id(room_id: str) -> Optional[int]:
+    """Parse patient_id from a room_id string. Supports purely numeric IDs and 'sandbox_{patient_id}' formats."""
+    if room_id.isdigit():
+        return int(room_id)
+    if room_id.startswith("sandbox_"):
+        suffix = room_id[len("sandbox_"):]
+        if suffix.isdigit():
+            return int(suffix)
+    return None
+
+
 # ── Request schemas ─────────────────────────────────────────────────────────────
 class FallStartRequest(BaseModel):
     """Request body to start a fall detection monitoring session for a patient room."""
@@ -62,6 +73,23 @@ class SeizureStartRequest(BaseModel):
     mode:       str = "monitor"
     bed_roi:    str = ""
 
+
+class SeizureTriggerAlertRequest(BaseModel):
+    patient_id: int
+    details: dict
+
+
+async def _update_room_monitoring_status(db: Session, room_ref: str, status_val: str):
+    room = None
+    if room_ref.isdigit():
+        room = db.query(models.Room).filter(models.Room.id == int(room_ref)).first()
+    if not room:
+        room = db.query(models.Room).filter(models.Room.room_number == room_ref).first()
+    if room:
+        room.monitoring_status = status_val
+        db.commit()
+        from backend.routers.rooms import trigger_room_ws_broadcast
+        await trigger_room_ws_broadcast(db, room)
 
 # ── Fall detection session management ──────────────────────────────────────────
 @router.post("/monitoring/fall/start")
@@ -90,6 +118,8 @@ async def start_fall_monitoring(
     result = await fall_detection_client.create_session(req.room_id)
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
+    
+    await _update_room_monitoring_status(db, req.room_id, "Monitoring")
     return {**result, "patient_id": req.patient_id, "ws_url": f"/api/ws/camera/{req.room_id}"}
 
 
@@ -97,7 +127,7 @@ async def start_fall_monitoring(
 async def stop_fall_monitoring(room_id: str, db: Session = Depends(get_db), _user = Depends(_clinical)):
     """Stop a fall detection session."""
     if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
-        patient_id = int(room_id) if room_id.isdigit() else None
+        patient_id = _parse_patient_id(room_id)
         if patient_id:
             assigned = db.query(models.PatientAssignment).filter(
                 models.PatientAssignment.patient_id == patient_id,
@@ -106,6 +136,26 @@ async def stop_fall_monitoring(room_id: str, db: Session = Depends(get_db), _use
             if not assigned:
                 raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
     result = await fall_detection_client.delete_session(room_id)
+    if result.get("error"):
+        raise HTTPException(status_code=503, detail=result["error"])
+    
+    await _update_room_monitoring_status(db, room_id, "Idle")
+    return result
+
+
+@router.post("/monitoring/fall/{room_id}/reset-latch")
+async def reset_fall_latch(room_id: str, db: Session = Depends(get_db), _user = Depends(_clinical)):
+    """Reset the fall alert latch for the given room."""
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        patient_id = _parse_patient_id(room_id)
+        if patient_id:
+            assigned = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.patient_id == patient_id,
+                models.PatientAssignment.user_id == _user.id
+            ).first()
+            if not assigned:
+                raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
+    result = await fall_detection_client.reset_latch(room_id)
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
     return result
@@ -144,10 +194,19 @@ async def start_seizure_monitoring(
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
 
+    # Update room status to Initializing (since seizure detection subprocess is launching)
+    room = db.query(models.Room).filter(models.Room.patient_id == req.patient_id).first()
+    if room:
+        room.monitoring_status = "Initializing"
+        db.commit()
+        from backend.routers.rooms import trigger_room_ws_broadcast
+        await trigger_room_ws_broadcast(db, room)
+
     # Launch a background coroutine that tails the seizure service WebSocket
     # and creates alerts when the status changes to SEIZURE
+    is_video = not req.source.isdigit() and ("/" in req.source or "\\" in req.source or req.source.endswith(".mp4") or req.source.endswith(".avi"))
     asyncio.create_task(
-        _seizure_event_relay(session_id=session_id, patient_id=req.patient_id)
+        _seizure_event_relay(session_id=session_id, patient_id=req.patient_id, is_video=is_video)
     )
 
     return {**result, "patient_id": req.patient_id}
@@ -168,7 +227,61 @@ async def stop_seizure_monitoring(session_id: str, db: Session = Depends(get_db)
     result = await seizure_detection_client.stop_session(session_id)
     if result.get("error"):
         raise HTTPException(status_code=503, detail=result["error"])
+
+    # Update room status to Idle
+    patient_id = int(session_id) if session_id.isdigit() else None
+    if patient_id:
+        room = db.query(models.Room).filter(models.Room.patient_id == patient_id).first()
+        if room:
+            room.monitoring_status = "Idle"
+            db.commit()
+            from backend.routers.rooms import trigger_room_ws_broadcast
+            await trigger_room_ws_broadcast(db, room)
+
     return result
+
+
+@router.post("/monitoring/seizure/{session_id}/reset-latch")
+async def reset_seizure_latch(session_id: str, db: Session = Depends(get_db), _user = Depends(_clinical)):
+    """Reset the seizure alert latch for the given session."""
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        patient_id = int(session_id) if session_id.isdigit() else _parse_patient_id(session_id)
+        if patient_id:
+            assigned = db.query(models.PatientAssignment).filter(
+                models.PatientAssignment.patient_id == patient_id,
+                models.PatientAssignment.user_id == _user.id
+            ).first()
+            if not assigned:
+                raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
+    result = await seizure_detection_client.reset_latch(session_id)
+    if result.get("error"):
+        raise HTTPException(status_code=503, detail=result["error"])
+    return result
+
+
+@router.post("/monitoring/seizure/trigger-alert")
+async def trigger_seizure_alert(
+    req: SeizureTriggerAlertRequest,
+    db: Session = Depends(get_db),
+    _user = Depends(_clinical),
+):
+    """Trigger and save a seizure alert (used by frontend sandbox during video testing)."""
+    if _user.role in (models.UserRole.doctor, models.UserRole.nurse):
+        assigned = db.query(models.PatientAssignment).filter(
+            models.PatientAssignment.patient_id == req.patient_id,
+            models.PatientAssignment.user_id == _user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status_code=403, detail="Access Denied: Patient is not assigned to you")
+            
+    alert = await alert_manager.publish(
+        db=db,
+        patient_id=req.patient_id,
+        alert_type="seizure",
+        severity="critical",
+        details=req.details,
+    )
+    return {"status": "success", "alert_id": alert.id}
 @router.post("/monitoring/seizure/upload-test-video")
 async def upload_seizure_test_video(
     file: UploadFile = File(...),
@@ -321,6 +434,7 @@ async def ws_camera(websocket: WebSocket, room_id: str):
 
             async def relay_from_fall():
                 """Receive fall events ← fall service, forward to camera client + alert subscribers."""
+                last_fall_detected = False
                 async for msg in fall_ws:
                     try:
                         event = json.loads(msg)
@@ -334,12 +448,12 @@ async def ws_camera(websocket: WebSocket, room_id: str):
                         pass
 
                     # If it's a fall, create a DB alert and broadcast to all subscribers
-                    if event.get("fall_detected"):
+                    current_fall_detected = event.get("fall_detected", False)
+                    if current_fall_detected and not last_fall_detected:
                         from ..database import SessionLocal
                         db = SessionLocal()
                         try:
-                            # room_id is used as patient identifier when it's numeric
-                            patient_id = int(room_id) if room_id.isdigit() else None
+                            patient_id = _parse_patient_id(room_id)
                             if patient_id:
                                 await alert_manager.publish(
                                     db=db,
@@ -352,6 +466,7 @@ async def ws_camera(websocket: WebSocket, room_id: str):
                             log.error(f"Failed to save fall alert: {exc}")
                         finally:
                             db.close()
+                    last_fall_detected = current_fall_detected
 
             # Run both relay coroutines concurrently
             await asyncio.gather(relay_to_fall(), relay_from_fall())
@@ -368,7 +483,7 @@ async def ws_camera(websocket: WebSocket, room_id: str):
 
 
 # ── Background task: relay seizure events → alert manager ────────────────────
-async def _seizure_event_relay(session_id: str, patient_id: int):
+async def _seizure_event_relay(session_id: str, patient_id: int, is_video: bool = False):
     """
     Runs as a background asyncio task.
     Subscribes to the seizure service WebSocket and creates DB alerts
@@ -386,22 +501,45 @@ async def _seizure_event_relay(session_id: str, patient_id: int):
         nonlocal last_status
         current_status = event.get("status", "NORMAL")
 
+        # Sync room status dynamically based on current_status
+        from ..database import SessionLocal
+        db_session = SessionLocal()
+        try:
+            room = db_session.query(models.Room).filter(models.Room.patient_id == patient_id).first()
+            if room:
+                target_status = "Monitoring"
+                if current_status == "INITIALISING":
+                    target_status = "Initializing"
+                elif current_status == "SEIZURE":
+                    target_status = "Critical Alert"
+                
+                if room.monitoring_status != target_status:
+                    room.monitoring_status = target_status
+                    db_session.commit()
+                    from backend.routers.rooms import trigger_room_ws_broadcast
+                    await trigger_room_ws_broadcast(db_session, room)
+        except Exception as e:
+            log.error(f"Error syncing room status in seizure relayer: {e}")
+        finally:
+            db_session.close()
+
         # Only fire an alert on the transition into SEIZURE
         if current_status == "SEIZURE" and last_status != "SEIZURE":
-            from ..database import SessionLocal
-            db = SessionLocal()
-            try:
-                await alert_manager.publish(
-                    db=db,
-                    patient_id=patient_id,
-                    alert_type="seizure",
-                    severity="critical",
-                    details=event,
-                )
-            except Exception as exc:
-                log.error(f"Failed to save seizure alert: {exc}")
-            finally:
-                db.close()
+            if not is_video:
+                from ..database import SessionLocal
+                db = SessionLocal()
+                try:
+                    await alert_manager.publish(
+                        db=db,
+                        patient_id=patient_id,
+                        alert_type="seizure",
+                        severity="critical",
+                        details=event,
+                    )
+                except Exception as exc:
+                    log.error(f"Failed to save seizure alert: {exc}")
+                finally:
+                    db.close()
 
         last_status = current_status
 

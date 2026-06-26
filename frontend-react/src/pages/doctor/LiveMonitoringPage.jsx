@@ -1,201 +1,432 @@
 /**
- * Live Monitoring View — shows all active fall/seizure sessions as a card grid.
+ * Live Monitoring View — Redesigned as a Hospital Central Monitoring Station.
  *
- * Each card clearly shows:
- *  - Session type (fall / seizure), patient name, mode
- *  - Current status: NORMAL (green) / INITIALISING (amber) / SEIZURE or FALL DETECTED (red)
- *  - A visible latch bar for the 30-second seizure hold window
- *  - One-click navigation to the patient
- *
- * Cards pulse when alert is active, stay calm when NORMAL — motion is
- * reserved strictly for alerting conditions.
+ * Each room is displayed as a card showing:
+ *  - Room number, floor, patient name/ID, assigned nurse(s).
+ *  - Current telemetry status: Idle, Monitoring, Warning, Critical Alert, Offline.
+ *  - Clinical service icons: Heart (ECG), Brain (Seizure), ArrowDown/Triangle (Fall).
+ *  - Blinking alarm panels for active alerts.
+ *  - Updates occur in real-time via WebSocket events for the affected card only.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, PersonStanding, HeartPulse, Wifi, WifiOff } from 'lucide-react'
-import Card, { CardHeader } from '../../components/ui/Card'
-import { StatusBadge } from '../../components/ui/Badge'
+import {
+  Heart, Brain, AlertTriangle, Search, Filter, SortAsc,
+  User, CheckCircle2, ShieldAlert, AlertCircle, RefreshCw, Eye
+} from 'lucide-react'
+import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import { MOCK_MONITORING_SESSIONS } from '../../mock/data'
-import { clsx } from 'clsx'
+import { StatusBadge } from '../../components/ui/Badge'
+import useAuthStore from '../../store/authStore'
+import { apiGetRooms, apiGetUsers } from '../../api/client'
 
 const IS_MOCK = import.meta.env.VITE_DATA_MODE !== 'live'
+const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
 
-/**
- * Live Monitoring page component.
- *
- * Displays a responsive card grid of all active fall/seizure monitoring sessions.
- * In mock mode (`VITE_DATA_MODE !== 'live'`) it uses static fixture data; in live
- * mode it polls `/api/monitoring/status` via the dashboard endpoint every 5 seconds.
- * A separate interval counts down the 30-second seizure latch window per session.
- *
- * @returns {JSX.Element} The live monitoring grid view.
- */
 export default function LiveMonitoringPage() {
-  const navigate  = useNavigate()
-  const [sessions, setSessions] = useState([])
-  const [latch,    setLatch]    = useState({})   // { sessionId: secondsRemaining }
+  const navigate = useNavigate()
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+
+  // State
+  const [rooms, setRooms] = useState([])
+  const [nursesList, setNursesList] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Filtering & Sorting State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedService, setSelectedService] = useState('')
+  const [selectedNurse, setSelectedNurse] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedFloor, setSelectedFloor] = useState('')
+  const [sortBy, setSortBy] = useState('room_number')
+
+  const wsRef = useRef(null)
+
+  // Fetch initial rooms and nurses list
+  const loadInitialData = async () => {
+    try {
+      setLoading(true)
+      const params = {
+        sort_by: sortBy,
+        service: selectedService,
+        nurse_id: selectedNurse ? Number(selectedNurse) : undefined,
+        floor: selectedFloor,
+        status_filter: selectedStatus
+      }
+      
+      const promises = [apiGetRooms(params)]
+      if (user?.role === 'admin' || user?.role === 'doctor') {
+        promises.push(apiGetUsers())
+      }
+      
+      const results = await Promise.all(promises)
+      const roomsData = results[0]
+      const usersData = results[1] || []
+      
+      setRooms(roomsData)
+      if (user?.role === 'admin' || user?.role === 'doctor') {
+        setNursesList(usersData.filter(u => u.role === 'nurse'))
+      }
+    } catch (err) {
+      console.error("Failed to load live monitor rooms:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    if (IS_MOCK) {
-      setSessions(MOCK_MONITORING_SESSIONS)
-      // Simulate latch countdown for the SEIZURE session
-      const seiz = MOCK_MONITORING_SESSIONS.find((s) => s.status === 'SEIZURE')
-      if (seiz) setLatch({ [seiz.room_id]: 28 })
-      return
-    }
-    // Live: poll /api/monitoring/status every 5 s
-    /**
-     * Fetches active fall and seizure sessions from the dashboard API and
-     * merges them into a single flat list annotated with a `type` field.
-     *
-     * @async
-     * @returns {Promise<void>}
-     */
-    const fetchSessions = async () => {
-      const { apiGetDashboard } = await import('../../api/client')
-      const d = await apiGetDashboard()
-      const combined = [
-        ...(d.active_sessions?.fall    || []).map((s) => ({ ...s, type: 'fall' })),
-        ...(d.active_sessions?.seizure || []).map((s) => ({ ...s, type: 'seizure' })),
-      ]
-      setSessions(combined)
-    }
-    fetchSessions()
-    const id = setInterval(fetchSessions, 5000)
-    return () => clearInterval(id)
-  }, [])
+    loadInitialData()
+  }, [selectedService, selectedNurse, selectedStatus, selectedFloor, sortBy])
 
-  // Countdown the latch timer
+  // Real-time WebSocket connection for room updates
   useEffect(() => {
-    const id = setInterval(() => {
-      setLatch((prev) => {
-        const next = { ...prev }
-        for (const k in next) {
-          next[k] = Math.max(0, next[k] - 1)
-          if (next[k] === 0) delete next[k]
+    if (IS_MOCK || !token) {
+      // Simulate real-time room updates on a timer in mock mode
+      const timer = setInterval(() => {
+        setRooms((prevRooms) => {
+          if (prevRooms.length === 0) return prevRooms
+          const nextRooms = [...prevRooms]
+          // Pick a random room to transition its status
+          const idx = Math.floor(Math.random() * nextRooms.length)
+          const target = { ...nextRooms[idx] }
+
+          if (target.patient) {
+            // Toggle between alert states and normal monitoring
+            if (target.monitoring_status === 'Monitoring') {
+              const types = ['fall', 'seizure', 'arrhythmia']
+              const selectedType = types[Math.floor(Math.random() * types.length)]
+              target.monitoring_status = 'Critical Alert'
+              target.risk_score = 0.92
+              target.active_alerts = [
+                {
+                  id: Date.now(),
+                  alert_type: selectedType,
+                  severity: 'critical',
+                  details: { message: `Simulated live ${selectedType} alert` },
+                  created_at: new Date().toISOString()
+                }
+              ]
+            } else {
+              target.monitoring_status = 'Monitoring'
+              target.risk_score = 0.0
+              target.active_alerts = []
+            }
+          }
+          nextRooms[idx] = target
+          return nextRooms
+        })
+      }, 16000)
+
+      return () => clearInterval(timer)
+    }
+
+    // Live Mode: Connect to alerts WebSocket to catch room_update frames
+    let cancelled = false
+    const connectWS = () => {
+      if (cancelled) return
+      const ws = new WebSocket(`${WS_BASE}/api/ws/alerts?token=${token}`)
+      wsRef.current = ws
+
+      ws.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data)
+          if (event.type === 'room_update') {
+            const updatedRoom = event.room_data
+            if (updatedRoom) {
+              setRooms((prevRooms) => {
+                // If it is already in our list, replace it
+                const index = prevRooms.findIndex(r => r.id === updatedRoom.id)
+                if (index !== -1) {
+                  const nextRooms = [...prevRooms]
+                  nextRooms[index] = updatedRoom
+                  return nextRooms
+                }
+                // If nurse user, only show rooms they are assigned to
+                if (user?.role === 'nurse') {
+                  const isAssigned = updatedRoom.nurses.some(n => n.id === Number(user.id))
+                  if (!isAssigned) return prevRooms
+                }
+                return [...prevRooms, updatedRoom]
+              })
+            }
+          } else if (event.type === 'room_delete') {
+            setRooms((prevRooms) => prevRooms.filter(r => r.id !== event.room_id))
+          }
+        } catch (err) {
+          console.error("Failed to parse websocket message:", err)
         }
-        return next
-      })
-    }, 1000)
-    return () => clearInterval(id)
-  }, [])
+      }
+
+      ws.onclose = () => {
+        if (!cancelled) {
+          setTimeout(connectWS, 3000)
+        }
+      }
+    }
+
+    connectWS()
+
+    return () => {
+      cancelled = true
+      wsRef.current?.close()
+    }
+  }, [token, user])
+
+  // Instant local search filter (names, IDs, room number, nurse name)
+  const filteredRooms = rooms.filter((room) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    const matchRoomNo = room.room_number ? room.room_number.toLowerCase().includes(q) : false
+    const matchRoomName = room.room_name ? room.room_name.toLowerCase().includes(q) : false
+    const matchPatient = room.patient?.name ? room.patient.name.toLowerCase().includes(q) : false
+    const matchPatientId = room.patient_id ? String(room.patient_id).includes(q) : false
+    const matchNurse = room.nurses ? room.nurses.some((n) => n.name ? n.name.toLowerCase().includes(q) : false) : false
+    return matchRoomNo || matchRoomName || matchPatient || matchPatientId || matchNurse
+  })
+
+  // Clear all filters
+  const handleResetFilters = () => {
+    setSearchQuery('')
+    setSelectedService('')
+    setSelectedNurse('')
+    setSelectedStatus('')
+    setSelectedFloor('')
+    setSortBy('room_number')
+  }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
-      <div>
-        <h1 className="font-heading font-bold text-2xl text-navy-900">Live Monitoring</h1>
-        <p className="text-navy-400 text-sm">{sessions.length} active sessions</p>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Station Title */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-bold text-2xl text-navy-900 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping shrink-0" />
+            Ward Central Monitoring Station
+          </h1>
+          <p className="text-navy-400 text-sm">
+            {user?.role === 'nurse'
+              ? `Displaying assigned rooms for Nurse ${user.name}`
+              : 'Aggregated real-time patient bed monitoring and sensor feeds.'}
+          </p>
+        </div>
+
+        {/* Quick Reset */}
+        <Button variant="ghost" size="sm" onClick={handleResetFilters} className="text-navy-500 hover:text-navy-800">
+          <RefreshCw size={14} className="mr-1" /> Reset Central Filters
+        </Button>
       </div>
 
-      {sessions.length === 0 && (
-        <Card className="py-12 text-center">
-          <WifiOff size={32} className="mx-auto mb-3 text-navy-300" />
-          <p className="text-navy-500 font-medium">No active monitoring sessions</p>
-          <p className="text-navy-400 text-sm mt-1">Start monitoring from a patient's detail page.</p>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {sessions.map((session) => (
-          <SessionCard
-            key={session.room_id || session.session_id}
-            session={session}
-            latchSeconds={latch[session.room_id || session.session_id] || 0}
-            onNavigate={() => navigate(`/doctor/patients/${session.patient_id}`)}
+      {/* Control Panel: Search & Filters */}
+      <div className="bg-white border border-navy-100 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        {/* Search */}
+        <div className="relative md:col-span-2">
+          <Search size={16} className="absolute left-3 top-3.5 text-navy-400" />
+          <input
+            type="text"
+            placeholder="Search room, patient, nurse..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-navy-50/50 hover:bg-navy-50 border border-navy-100 focus:border-teal-500 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
           />
-        ))}
+        </div>
+
+        {/* Service */}
+        <div className="relative">
+          <Filter size={12} className="absolute left-2.5 top-3.5 text-navy-400" />
+          <select
+            value={selectedService}
+            onChange={(e) => setSelectedService(e.target.value)}
+            className="w-full pl-7 pr-3 py-2.5 bg-navy-50/50 border border-navy-100 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+          >
+            <option value="">All Services</option>
+            <option value="ecg">ECG</option>
+            <option value="seizure">Seizure</option>
+            <option value="fall">Fall</option>
+          </select>
+        </div>
+
+        {/* Nurse (Admin/Doctor only) */}
+        {user?.role !== 'nurse' ? (
+          <div className="relative">
+            <User size={12} className="absolute left-2.5 top-3.5 text-navy-400" />
+            <select
+              value={selectedNurse}
+              onChange={(e) => setSelectedNurse(e.target.value)}
+              className="w-full pl-7 pr-3 py-2.5 bg-navy-50/50 border border-navy-100 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+            >
+              <option value="">All Nurses</option>
+              {nursesList.map(n => (
+                <option key={n.id} value={n.id}>{n.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="bg-navy-50 border border-navy-100 text-navy-500 px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center">
+            My Rooms Scoped
+          </div>
+        )}
+
+        {/* Status */}
+        <div className="relative">
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="w-full px-3 py-2.5 bg-navy-50/50 border border-navy-100 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+          >
+            <option value="">All Statuses</option>
+            <option value="Monitoring">Monitoring</option>
+            <option value="Warning">Warning</option>
+            <option value="Critical Alert">Critical Alert</option>
+            <option value="Initializing">Initializing</option>
+            <option value="Idle">Idle</option>
+            <option value="Offline">Offline</option>
+          </select>
+        </div>
+
+        {/* Sorting */}
+        <div className="relative">
+          <SortAsc size={12} className="absolute left-2.5 top-3.5 text-navy-400" />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full pl-7 pr-3 py-2.5 bg-navy-50/50 border border-navy-100 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+          >
+            <option value="room_number">Room Number</option>
+            <option value="patient_name">Patient Name</option>
+            <option value="alert_priority">Alert Priority</option>
+            <option value="highest_risk">Highest Risk</option>
+          </select>
+        </div>
       </div>
+
+      {/* Main Grid */}
+      {filteredRooms.length === 0 ? (
+        <Card className="py-16 text-center border border-navy-100">
+          <AlertCircle size={40} className="mx-auto mb-3 text-navy-300" />
+          <p className="text-navy-500 font-semibold text-lg">No active rooms found</p>
+          <p className="text-navy-400 text-sm mt-1">Try relaxing search terms or check room persistence config.</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredRooms.map((room) => (
+            <RoomCard
+              key={room.id}
+              room={room}
+              onViewDetails={() => navigate(`/${user.role}/rooms/${room.id}`)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 /**
- * Card representing a single active monitoring session.
- *
- * Applies visual states based on session status:
- *  - Pulsing red border when a SEIZURE or FALL_DETECTED alert is active.
- *  - Amber border and a countdown progress bar during the 30-second latch window.
- *  - Neutral card otherwise.
- *
- * @param {object}   props
- * @param {object}   props.session      - Session data object (type, patient_name, status, etc.).
- * @param {number}   props.latchSeconds - Seconds remaining in the alert hold window (0 = no latch).
- * @param {Function} props.onNavigate   - Callback invoked when the card is clicked to navigate to the patient.
- * @returns {JSX.Element}
+ * High-fidelity room display card.
  */
-function SessionCard({ session, latchSeconds, onNavigate }) {
-  const isAlert    = session.status === 'SEIZURE' || session.status === 'FALL_DETECTED'
-  const isLatched  = latchSeconds > 0 && !isAlert
-  const TypeIcon   = session.type === 'seizure' ? Activity : PersonStanding
+function RoomCard({ room, onViewDetails }) {
+  const hasCritical = room.monitoring_status === 'Critical Alert'
+  const hasWarning = room.monitoring_status === 'Warning'
+
+  // Map service names to icons
+  const renderServiceIcon = (svc) => {
+    const s = svc.toLowerCase()
+    const iconClass = "w-4 h-4"
+    if (s === 'ecg') return <Heart key={s} className={`${iconClass} text-red-500`} title="ECG Monitoring" />
+    if (s === 'seizure') return <Brain key={s} className={`${iconClass} text-purple-500`} title="Seizure Detection" />
+    if (s === 'fall') return <AlertTriangle key={s} className={`${iconClass} text-amber-500`} title="Fall Detection" />
+    return null
+  }
 
   return (
     <div
-      className={clsx(
-        'rounded-2xl border-2 p-5 transition-all duration-300 cursor-pointer',
-        isAlert
-          ? 'bg-red-50 border-red-400 animate-pulse-slow shadow-lg shadow-red-100'
-          : isLatched
-          ? 'bg-amber-50 border-amber-300'
-          : 'bg-white border-navy-100 hover:border-teal-300 hover:shadow-md',
-      )}
-      onClick={onNavigate}
+      onClick={onViewDetails}
+      className={`rounded-2xl border-2 p-5 bg-white transition-all duration-300 cursor-pointer flex flex-col justify-between h-[230px] group ${
+        hasCritical
+          ? 'border-red-500 shadow-lg shadow-red-50 hover:shadow-red-100 animate-pulse-slow'
+          : hasWarning
+          ? 'border-amber-400 shadow-md shadow-amber-50'
+          : 'border-navy-100 hover:border-teal-400 hover:shadow-lg'
+      }`}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className={clsx(
-            'p-2 rounded-lg',
-            isAlert ? 'bg-red-100 text-red-600' : 'bg-navy-100 text-navy-600',
-          )}>
-            <TypeIcon size={16} />
-          </div>
+      {/* Header Info */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-navy-900">{session.patient_name}</p>
-            <p className="text-xs text-navy-400 capitalize">{session.type} · {session.mode || 'monitor'}</p>
+            <span className="text-[10px] text-navy-400 font-bold uppercase tracking-widest block">Room</span>
+            <span className="font-heading font-black text-xl text-navy-900 group-hover:text-teal-600 transition-colors">
+              {room.room_number}
+            </span>
+            <span className="text-[10px] text-navy-400 font-medium ml-2 uppercase">Floor {room.floor || '1'}</span>
           </div>
+
+          {/* Dynamic Status Badge */}
+          <StatusBadge status={room.monitoring_status} />
         </div>
-        <div className="flex items-center gap-1 text-xs text-teal-600">
-          <Wifi size={12} className="animate-pulse" />
-          <span>Live</span>
+
+        {/* Patient Block */}
+        <div className="space-y-1">
+          {room.patient ? (
+            <div>
+              <p className="text-sm font-semibold text-navy-800">{room.patient.name}</p>
+              <p className="text-xs text-navy-400 font-mono">Patient ID: {room.patient.id}</p>
+            </div>
+          ) : (
+            <p className="text-xs italic text-navy-400 py-1">No patient assigned</p>
+          )}
         </div>
       </div>
 
-      {/* Status */}
-      <div className="flex items-center justify-between mb-3">
-        <StatusBadge status={session.status} />
-        {session.type === 'seizure' && session.gate_score != null && (
-          <span className="text-xs text-navy-500 font-mono">
-            gate: {session.gate_score.toFixed(3)}
-          </span>
-        )}
-        {session.type === 'fall' && session.fall_probability != null && (
-          <span className="text-xs text-navy-500 font-mono">
-            p(fall): {(session.fall_probability * 100).toFixed(0)}%
-          </span>
-        )}
+      {/* Alarms and Detections Block */}
+      <div className="my-2 flex-1 flex flex-col justify-center">
+        {room.active_alerts && room.active_alerts.length > 0 ? (
+          <div className="space-y-1">
+            {room.active_alerts.map((alt) => (
+              <div
+                key={alt.id}
+                className="px-2.5 py-1 rounded-lg bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold uppercase flex items-center justify-between"
+              >
+                <span>⚠ {alt.alert_type} Alarm</span>
+                <span className="font-mono text-[9px]">{alt.severity}</span>
+              </div>
+            ))}
+          </div>
+        ) : room.patient ? (
+          <div className="flex items-center gap-1.5 text-green-700 text-[11px] font-medium bg-green-50 rounded-lg px-2.5 py-1.5 w-fit">
+            <CheckCircle2 size={13} /> Signals Stable
+          </div>
+        ) : null}
       </div>
 
-      {/* Latch countdown bar */}
-      {isLatched && (
-        <div className="mt-2">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-amber-700 font-semibold">Alert hold — {latchSeconds}s remaining</span>
-          </div>
-          <div className="h-1.5 bg-amber-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-amber-500 rounded-full transition-all duration-1000"
-              style={{ width: `${(latchSeconds / 30) * 100}%` }}
-            />
-          </div>
+      {/* Footer Info: Services, Nurses, and View Button */}
+      <div className="border-t border-navy-50 pt-3 flex items-center justify-between text-xs">
+        {/* Service Icons */}
+        <div className="flex items-center gap-1.5">
+          {room.services.map(renderServiceIcon)}
         </div>
-      )}
 
-      {isAlert && (
-        <div className="mt-3 text-xs font-bold text-red-700 text-center bg-red-100 rounded-lg py-2 uppercase tracking-wide">
-          ⚠ {session.type === 'seizure' ? 'Seizure Detected' : 'Fall Detected'} — Alert Active
+        {/* Assigned Nurse(s) */}
+        <div className="text-right">
+          {room.nurses.length > 0 ? (
+            <p className="text-[10px] text-navy-400 font-medium truncate max-w-[120px]">
+              Nurse: {room.nurses.map(n => {
+                const parts = n.name.split(' ')
+                return parts[0].toLowerCase() === 'nurse' && parts.length > 1 ? parts[1] : parts[0]
+              }).join(', ')}
+            </p>
+          ) : (
+            <p className="text-[10px] text-navy-300 italic">Unassigned</p>
+          )}
         </div>
-      )}
+
+        {/* Hover View Button */}
+        <div className="hidden group-hover:block transition-all pl-2">
+          <span className="flex items-center gap-0.5 text-xs text-teal-600 font-bold">
+            <Eye size={12} /> Monitor
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

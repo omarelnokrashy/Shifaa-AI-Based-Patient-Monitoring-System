@@ -100,7 +100,7 @@ async def lifespan(app: FastAPI):
 
 def _load_checkpoint(model, path: Path):
     """Load a state-dict checkpoint and switch model to eval mode."""
-    ckpt = torch.load(path, map_location=DEVICE)
+    ckpt = torch.load(path, map_location=DEVICE, weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
     return model

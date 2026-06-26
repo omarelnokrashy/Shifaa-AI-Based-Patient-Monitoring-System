@@ -1,15 +1,11 @@
-/**
- * AlertFeed — the real-time alert list for doctor/nurse dashboards.
- * Sorted by recency and severity. Unacknowledged alerts have a subtle pulse.
- * One-click navigates to the relevant patient.
- */
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNow } from '../utils/time'
+import { formatDistanceToNow, parseUTCDate } from '../utils/time'
 import { SeverityBadge, AlertTypeBadge } from '../ui/Badge'
-import { CheckCheck, ExternalLink } from 'lucide-react'
+import { CheckCheck, ExternalLink, Trash2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import useAuthStore from '../../store/authStore'
-import { apiAcknowledgeAlert } from '../../api/client'
+import { apiAcknowledgeAlert, apiCancelAlert } from '../../api/client'
 import useAlertsStore from '../../store/alertsStore'
 
 /**
@@ -19,14 +15,28 @@ import useAlertsStore from '../../store/alertsStore'
  *
  * @param {Object}   props
  * @param {Array}    [props.alerts=[]]        Array of alert objects to display.
+ * @param {string}   [props.mode='active']    Mode of display: 'active' or 'history'.
+ * @param {number|string} [props.highlightId] ID of the alert to highlight and scroll to.
  * @param {Function} [props.onAcknowledge]    Optional callback fired after an alert is acknowledged,
  *                                            receiving `(alertId: number)` as argument.
  * @returns {JSX.Element}
  */
-export default function AlertFeed({ alerts = [], onAcknowledge }) {
+export default function AlertFeed({ alerts = [], mode = 'active', highlightId, onAcknowledge }) {
   const navigate = useNavigate()
   const user     = useAuthStore((s) => s.user)
   const ackStore = useAlertsStore((s) => s.acknowledge)
+
+  // Scroll highlight element into view when active
+  useEffect(() => {
+    if (highlightId) {
+      const el = document.getElementById(`alert-card-${highlightId}`)
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 300)
+      }
+    }
+  }, [highlightId, alerts])
 
   /**
    * Acknowledges an alert via the API and updates the local store.
@@ -41,50 +51,80 @@ export default function AlertFeed({ alerts = [], onAcknowledge }) {
     await apiAcknowledgeAlert(alert.id, user?.id)
     ackStore(alert.id)
     onAcknowledge?.(alert.id)
+    window.location.reload()
+  }
+
+  /**
+   * Cancels/deletes an active alert via the API.
+   *
+   * @param {React.MouseEvent} e      - The click event from the cancel button.
+   * @param {Object}           alert  - The alert object to cancel.
+   * @returns {Promise<void>}
+   */
+  const handleCancel = async (e, alert) => {
+    e.stopPropagation()
+    await apiCancelAlert(alert.id)
+    useAlertsStore.getState().removeAlert(alert.id)
+    window.location.reload()
   }
 
   /**
    * Navigates to the patient detail page for the given alert.
    * Builds the route prefix from the current user's role (`/doctor` or `/nurse`).
+   * Passes the highlightAlert parameter in the query string.
    *
    * @param {Object} alert - The alert object whose `patient_id` is used for navigation.
    * @returns {void}
    */
   const goToPatient = (alert) => {
     const prefix = user?.role === 'nurse' ? '/nurse' : '/doctor'
-    navigate(`${prefix}/patients/${alert.patient_id}`)
+    navigate(`${prefix}/patients/${alert.patient_id}?highlightAlert=${alert.id}`)
+  }
+
+  const handleExport = (e, alert) => {
+    e.stopPropagation()
+    goToPatient(alert)
   }
 
   if (!alerts.length) {
     return (
       <div className="text-center py-8 text-navy-400">
         <CheckCheck size={28} className="mx-auto mb-2 text-green-400" />
-        <p className="text-sm font-medium text-green-600">No active alerts</p>
+        <p className="text-sm font-medium text-green-600">No alerts found</p>
         <p className="text-xs text-navy-400 mt-0.5">All clear</p>
       </div>
     )
   }
 
+  const isHighlighted = (alert) => Number(alert.id) === Number(highlightId)
+  const showSeverityAccent = (alert) => mode !== 'history' && !isHighlighted(alert) && !alert.acknowledged
+
   return (
     <div className="space-y-2">
       {alerts.map((alert) => (
         <div
+          id={`alert-card-${alert.id}`}
           key={alert.id}
           onClick={() => goToPatient(alert)}
+          aria-current={isHighlighted(alert) ? 'true' : undefined}
           className={clsx(
             'flex items-start gap-3 p-3 rounded-xl border cursor-pointer',
             'transition-all duration-150 hover:shadow-md hover:-translate-y-0.5',
-            alert.acknowledged
+            isHighlighted(alert)
+              ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-sm'
+              : alert.acknowledged && mode !== 'history'
               ? 'bg-white border-navy-100 opacity-60'
-              : 'bg-white border-l-4',
-            !alert.acknowledged && alert.severity === 'critical' && 'border-l-red-500',
-            !alert.acknowledged && alert.severity === 'high'     && 'border-l-orange-500',
-            !alert.acknowledged && alert.severity === 'medium'   && 'border-l-amber-500',
-            !alert.acknowledged && alert.severity === 'low'      && 'border-l-blue-500',
+              : showSeverityAccent(alert)
+              ? 'bg-white border-l-4'
+              : 'bg-white border-navy-100',
+            showSeverityAccent(alert) && alert.severity === 'critical' && 'border-l-red-500',
+            showSeverityAccent(alert) && alert.severity === 'high'     && 'border-l-orange-500',
+            showSeverityAccent(alert) && alert.severity === 'medium'   && 'border-l-amber-500',
+            showSeverityAccent(alert) && alert.severity === 'low'      && 'border-l-blue-500',
           )}
         >
-          {/* Pulse indicator (only unacknowledged) */}
-          {!alert.acknowledged && (
+          {/* Pulse indicator (only active unacknowledged) */}
+          {mode !== 'history' && !alert.acknowledged && !isHighlighted(alert) && (
             <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-red-500 animate-pulse-slow" />
           )}
 
@@ -94,7 +134,12 @@ export default function AlertFeed({ alerts = [], onAcknowledge }) {
               <SeverityBadge severity={alert.severity} />
               {alert.acknowledged && (
                 <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                  <CheckCheck size={11} /> Acknowledged
+                  <CheckCheck size={11} /> Acknowledged {alert.acknowledged_by ? `by ${alert.acknowledged_by}` : ''}
+                </span>
+              )}
+              {isHighlighted(alert) && (
+                <span className="text-xs text-amber-600 font-semibold px-1.5 py-0.5 rounded bg-amber-100">
+                  Targeted Alert
                 </span>
               )}
             </div>
@@ -109,20 +154,42 @@ export default function AlertFeed({ alerts = [], onAcknowledge }) {
                 {getAlertSummary(alert)}
               </p>
             )}
+            {alert.acknowledged && alert.acknowledged_at && (
+              <p className="text-[10px] text-navy-400 mt-0.5">
+                Acknowledged at: {parseUTCDate(alert.acknowledged_at)?.toLocaleString()}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
-            {!alert.acknowledged && (
+          {mode !== 'history' && (
+            <div className="flex items-center gap-1 shrink-0">
+              {!alert.acknowledged && (
+                <button
+                  onClick={(e) => handleAck(e, alert)}
+                  title="Acknowledge"
+                  className="p-1.5 rounded-lg hover:bg-green-50 text-navy-400 hover:text-green-600 transition-colors"
+                >
+                  <CheckCheck size={15} />
+                </button>
+              )}
+              {!alert.acknowledged && (
+                <button
+                  onClick={(e) => handleCancel(e, alert)}
+                  title="Cancel"
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-navy-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
               <button
-                onClick={(e) => handleAck(e, alert)}
-                title="Acknowledge"
-                className="p-1.5 rounded-lg hover:bg-green-50 text-navy-400 hover:text-green-600 transition-colors"
+                onClick={(e) => handleExport(e, alert)}
+                title="Export"
+                className="p-1.5 rounded-lg hover:bg-blue-50 text-navy-400 hover:text-blue-600 transition-colors"
               >
-                <CheckCheck size={15} />
+                <ExternalLink size={15} />
               </button>
-            )}
-            <ExternalLink size={13} className="text-navy-300" />
-          </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

@@ -205,6 +205,22 @@ def delete_session(room_id: str):
     return {"deleted": room_id}
 
 
+@app.post("/sessions/{room_id}/reset-latch")
+def reset_latch(room_id: str):
+    """Reset the fall alert latch for all tracks in a session."""
+    if room_id not in _active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session = _active_sessions[room_id]
+    for track_id, state in session.track_state.items():
+        state["latch_active"] = False
+        state["latch_start_time"] = None
+        state["fall_streak"] = 0
+        state["alarm_active"] = False
+        state["fall_prob"] = 0.0
+    log.info(f"Latch reset successfully for room_id={room_id}")
+    return {"status": "success", "room_id": room_id}
+
+
 @app.get("/sessions", response_model=list[SessionInfo])
 def list_sessions():
     return [
@@ -314,6 +330,8 @@ def _process_frame(session: RoomSession, frame: np.ndarray) -> Optional[dict]:
             "alarm_active": False,
             "last_role_f":  -9999,
             "last_infer_f": -9999,
+            "latch_active": False,
+            "latch_start_time": None,
         })
 
         # Role classification (every ROLE_EVERY frames per track)
@@ -323,7 +341,7 @@ def _process_frame(session: RoomSession, frame: np.ndarray) -> Optional[dict]:
                 state["role_label"], state["role_conf"] = _role_clf.predict_crop(crop)
                 state["last_role_f"] = frame_index
 
-        is_patient = (session.room_id == "sandbox_test") or (state["role_label"] == "patient" and state["role_conf"] >= ROLE_THRESHOLD)
+        is_patient = (session.room_id == "sandbox_test" or session.room_id.startswith("sandbox_")) or (state["role_label"] == "patient" and state["role_conf"] >= ROLE_THRESHOLD)
         if not is_patient:
             continue
 
@@ -340,28 +358,44 @@ def _process_frame(session: RoomSession, frame: np.ndarray) -> Optional[dict]:
 
         # CTR-GCN inference every INFER_EVERY frames once buffer is full
         if len(state["sequence"]) == WINDOW_SIZE:
+            current_time = time.time()
+            if state.get("latch_active"):
+                elapsed = current_time - state["latch_start_time"]
+                if elapsed >= 30.0:
+                    state["latch_active"] = False
+                    state["latch_start_time"] = None
+                    state["fall_streak"] = 0
+                    state["alarm_active"] = False
+                    state["fall_prob"] = 0.0
+
             if frame_index - state["last_infer_f"] >= INFER_EVERY:
                 label, conf, fall_prob = _predict_fall(list(state["sequence"]))
                 state["last_infer_f"] = frame_index
                 state["fall_prob"]    = fall_prob
 
-                if fall_prob >= FALL_THRESHOLD:
-                    state["fall_streak"] += 1
-                else:
-                    state["fall_streak"] = 0
-                    state["alarm_active"] = False
+                if not state.get("latch_active"):
+                    if fall_prob >= FALL_THRESHOLD:
+                        state["fall_streak"] += 1
+                    else:
+                        state["fall_streak"] = 0
+                        state["alarm_active"] = False
 
-                # Require ≥2 consecutive predictions to trigger (reduces flicker)
-                state["alarm_active"] = state["fall_streak"] >= 2
-                
-                best_event = {
-                    "fall_detected":   bool(state["alarm_active"]),
-                    "fall_probability": round(fall_prob, 4),
-                    "track_id":        track_id,
-                    "timestamp":       time.time(),
-                }
-                if state["alarm_active"]:
-                    log.warning(f"FALL DETECTED room={session.room_id} track={track_id} p={fall_prob:.3f}")
+                    # Require ≥2 consecutive predictions to trigger (reduces flicker)
+                    if state["fall_streak"] >= 2:
+                        state["alarm_active"] = True
+                        state["latch_active"] = True
+                        state["latch_start_time"] = current_time
+
+            best_event = {
+                "fall_detected":   bool(state["alarm_active"]),
+                "fall_probability": round(state["fall_prob"], 4),
+                "track_id":        track_id,
+                "timestamp":       current_time,
+                "latch_active":    state.get("latch_active", False),
+                "latch_remaining": round(max(0.0, 30.0 - (current_time - state["latch_start_time"])), 1) if state.get("latch_active") else 0.0,
+            }
+            if state["alarm_active"] and state.get("latch_active") and state["fall_streak"] == 2:
+                log.warning(f"FALL DETECTED room={session.room_id} track={track_id} p={state['fall_prob']:.3f}")
         else:
             # Buffer is still filling up. Send progress updates to UI every INFER_EVERY frames
             if frame_index % INFER_EVERY == 0:
@@ -371,6 +405,8 @@ def _process_frame(session: RoomSession, frame: np.ndarray) -> Optional[dict]:
                     "track_id":        track_id,
                     "timestamp":       time.time(),
                     "status":          "INITIALISING",
+                    "latch_active":    False,
+                    "latch_remaining": 0.0,
                 }
 
     return best_event

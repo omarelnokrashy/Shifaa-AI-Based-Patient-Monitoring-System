@@ -32,20 +32,25 @@ export default function DoctorDashboard() {
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
-  const liveAlerts = useAlertsStore((s) => s.alerts)
+  const alerts = useAlertsStore((s) => s.alerts)
+  const setAlerts = useAlertsStore((s) => s.setAlerts)
 
   useEffect(() => {
-    apiGetDashboard().then((d) => { setSummary(d); setLoading(false) })
-    const id = setInterval(() => apiGetDashboard().then(setSummary), 30000)
+    apiGetDashboard().then((d) => {
+      setSummary(d)
+      setAlerts(d.recent_alerts || [])
+      setLoading(false)
+    })
+    const id = setInterval(() => {
+      apiGetDashboard().then((d) => {
+        setSummary(d)
+        setAlerts(d.recent_alerts || [])
+      })
+    }, 30000)
     return () => clearInterval(id)
-  }, [])
+  }, [setAlerts])
 
-  const alertCounts = summary?.alert_counts || []
-  const staticAlerts = summary?.recent_alerts || []
-  const allAlerts = [...liveAlerts, ...staticAlerts].filter(
-    (a, i, arr) => arr.findIndex((x) => x.id === a.id) === i
-  ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
+  const allAlerts = [...alerts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   const serviceHealth = summary?.service_health || {}
   const chatCount = summary?.chat_count_24h || 0
 
@@ -57,7 +62,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* ── Stat bar ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           Icon={AlertTriangle} label="Active Alerts"
           value={allAlerts.filter((a) => !a.acknowledged).length}
@@ -65,13 +70,18 @@ export default function DoctorDashboard() {
         />
         <StatCard
           Icon={HeartPulse} label="ECG Alerts (24h)"
-          value={alertCounts.find((c) => c.alert_type === 'arrhythmia')?.count || 0}
+          value={allAlerts.filter((a) => a.alert_type === 'arrhythmia').length}
           color="text-teal-600" bg="bg-teal-50"
         />
         <StatCard
           Icon={Activity} label="Seizure Events (24h)"
-          value={alertCounts.find((c) => c.alert_type === 'seizure')?.count || 0}
+          value={allAlerts.filter((a) => a.alert_type === 'seizure').length}
           color="text-orange-600" bg="bg-orange-50"
+        />
+        <StatCard
+          Icon={PersonStanding} label="Fall Events (24h)"
+          value={allAlerts.filter((a) => a.alert_type === 'fall').length}
+          color="text-rose-600" bg="bg-rose-50"
         />
         <StatCard
           Icon={MessageSquare} label="Chat Queries (24h)"

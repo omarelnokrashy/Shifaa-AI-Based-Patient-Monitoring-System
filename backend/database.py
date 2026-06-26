@@ -19,11 +19,14 @@ import os
 # Load the .env file
 load_dotenv()
 
-# The connection string tells SQLAlchemy how to reach PostgreSQL
-DATABASE_URL = os.getenv('DATABASE_URL')
+# The connection string tells SQLAlchemy how to reach PostgreSQL or SQLite
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./medical_db.db')
 
 # 'engine' is the actual connection pool to the database
-engine = create_engine(DATABASE_URL)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
 
 # SessionLocal is a factory that creates database sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

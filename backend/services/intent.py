@@ -108,7 +108,7 @@ def classify_intent(query: str) -> dict:
                 {'role': 'user', 'content': query}
             ],
             temperature=0.0,          # deterministic output for classification
-            timeout=4.0
+            timeout=15.0
         )
         result = json.loads(response.choices[0].message.content)
         if result.get('intent') not in INTENTS:

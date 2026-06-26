@@ -138,10 +138,13 @@ def get_diagnoses(patient_id: int, db: Session = Depends(get_db),
     ).order_by(models.Diagnosis.diagnosed_on.desc()).all()
 
 @router.get('/{patient_id}/alerts', response_model=List[schemas.AlertOut])
-def get_patient_alerts(patient_id: int, db: Session = Depends(get_db),
+def get_patient_alerts(patient_id: int,
+                       history_only: bool = True,
+                       db: Session = Depends(get_db),
                        doctor = Depends(get_current_doctor)):
     """
-    Return all alerts for a patient.
+    Return alerts for a patient. By default, only acknowledged history is returned
+    (history_only=True). Pass history_only=False to retrieve both active and historical alerts.
 
     Doctors are restricted to patients assigned to them via a visit record.
     Nurses and admins can access alerts for any patient.
@@ -154,12 +157,34 @@ def get_patient_alerts(patient_id: int, db: Session = Depends(get_db),
         if not assigned:
             raise HTTPException(status_code=403, detail='Access Denied: Patient is not assigned to you')
 
-    alerts = db.query(models.Alert).filter(
-        models.Alert.patient_id == patient_id
-    ).order_by(models.Alert.created_at.desc()).all()
-
     res = []
-    for a in alerts:
+
+    # Fetch active (unacknowledged) alerts if history_only is False
+    if not history_only:
+        active_alerts = db.query(models.Alert).filter(
+            models.Alert.patient_id == patient_id
+        ).all()
+        for a in active_alerts:
+            res.append({
+                "id": a.id,
+                "patient_id": a.patient_id,
+                "alert_type": a.alert_type.value if hasattr(a.alert_type, 'value') else str(a.alert_type),
+                "severity": a.severity.value if hasattr(a.severity, 'value') else str(a.severity),
+                "details": a.details,
+                "created_at": a.created_at,
+                "acknowledged_by": None,
+                "acknowledged_at": None,
+                "acknowledged": False,
+                "patient_name": a.patient.name if a.patient else None,
+                "alert_id": a.id
+            })
+
+    # Fetch historical (acknowledged) alerts
+    hist_alerts = db.query(models.AlertHistory).filter(
+        models.AlertHistory.patient_id == patient_id
+    ).all()
+
+    for a in hist_alerts:
         res.append({
             "id": a.id,
             "patient_id": a.patient_id,
@@ -167,10 +192,14 @@ def get_patient_alerts(patient_id: int, db: Session = Depends(get_db),
             "severity": a.severity,
             "details": a.details,
             "created_at": a.created_at,
-            "acknowledged_by": a.acknowledged_by,
+            "acknowledged_by": a.acknowledger.name if a.acknowledger else (str(a.acknowledged_by) if a.acknowledged_by else None),
             "acknowledged_at": a.acknowledged_at,
-            "acknowledged": a.acknowledged_by is not None,
-            "patient_name": a.patient.name if a.patient else None
+            "acknowledged": True,
+            "patient_name": a.patient.name if a.patient else None,
+            "alert_id": a.alert_id
         })
+
+    # Sort combined alerts list by creation timestamp descending
+    res.sort(key=lambda x: x["created_at"] or datetime.min, reverse=True)
     return res
 

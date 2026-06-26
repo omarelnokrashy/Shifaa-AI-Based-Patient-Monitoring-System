@@ -86,3 +86,15 @@ async def list_sessions() -> list[dict]:
 def get_ws_url(room_id: str) -> str:
     """Return the WebSocket URL for streaming frames to a room."""
     return f"{_WS_BASE}/ws/{room_id}"
+
+
+async def reset_latch(room_id: str) -> dict:
+    """Reset the fall alert latch for the given room."""
+    try:
+        resp = await _client.post(f"/sessions/{room_id}/reset-latch")
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:
+        msg = f"Could not reset fall alert latch for room {room_id}: {exc}"
+        log.error(msg)
+        return {"error": msg}

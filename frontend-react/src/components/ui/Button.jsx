@@ -1,6 +1,6 @@
 /**
  * @file Button.jsx
- * @description Reusable Button component for the MedMonitor UI.
+ * @description Reusable Button component for the Shifaa UI.
  *
  * Variants:
  *   - `primary`   — teal filled, used for primary CTAs.

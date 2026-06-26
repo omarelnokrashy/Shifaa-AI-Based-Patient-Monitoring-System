@@ -241,6 +241,53 @@ def chat_rest(request: schemas.ChatRequest,
     return {'answer': full_answer, 'intent': intent, 'sources': sources}
 
 
+# ── GET chat history endpoint ─────────────────────────────────────────────────
+@router.get('/chat/history/{patient_id}', response_model=list[schemas.ChatLogOut])
+def get_chat_history(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    doctor = Depends(require_role("doctor"))
+):
+    """
+    Retrieves the persistent chat history for the authenticated doctor
+    and the specified patient, ordered by creation time.
+    """
+    # Verify assignment
+    assigned = db.query(models.PatientAssignment).filter(
+        models.PatientAssignment.patient_id == patient_id,
+        models.PatientAssignment.user_id == doctor.id
+    ).first()
+    if not assigned:
+        raise HTTPException(status_code=403, detail='Access Denied: Patient is not assigned to you')
+
+    logs = db.query(models.ChatLog).filter(
+        models.ChatLog.doctor_id == doctor.id,
+        models.ChatLog.patient_id == patient_id
+    ).order_by(models.ChatLog.created_at.asc()).all()
+
+    return logs
+
+
+# ── GET general chat history endpoint ─────────────────────────────────────────
+@router.get('/chat/general/history', response_model=list[schemas.ChatLogOut])
+def get_general_chat_history(
+    db: Session = Depends(get_db),
+    doctor = Depends(require_role("doctor"))
+):
+    """
+    Retrieves the persistent general (global) chat history for the authenticated doctor,
+    ordered by creation time.
+    """
+    logs = db.query(models.ChatLog).filter(
+        models.ChatLog.doctor_id == doctor.id,
+        models.ChatLog.patient_id.is_(None)
+    ).order_by(models.ChatLog.created_at.asc()).all()
+
+    return logs
+
+
+
+
 # ── WebSocket (streaming) ─────────────────────────────────────────────────────
 @router.websocket('/chat/stream')
 async def chat_websocket(websocket: WebSocket):

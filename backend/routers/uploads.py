@@ -20,7 +20,7 @@ import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from ..database import get_db
+from ..database import get_db, SessionLocal
 from ..auth import get_current_doctor_from_token
 from ..services.llm import generate_answer_with_image
 from .. import models
@@ -75,6 +75,25 @@ async def analyze_image(
     image_bytes = await image.read()
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Empty image file")
+
+    import os
+    import uuid
+    from pathlib import Path
+
+    # Ensure uploads/chat_images directory exists
+    chat_images_dir = Path("uploads/chat_images")
+    chat_images_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate a unique filename and save the file
+    ext = os.path.splitext(image.filename)[1] or ".png"
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    saved_file_path = chat_images_dir / unique_filename
+
+    with open(saved_file_path, "wb") as buffer:
+        buffer.write(image_bytes)
+
+    # Relative static path for the saved image
+    image_url = f"/uploads/chat_images/{unique_filename}"
 
     # Load patient if provided
     patient = None
@@ -189,6 +208,7 @@ async def analyze_image(
                     yield f"data: {json.dumps({'type': 'think_done', 'duration': duration})}\n\n"
                     in_think = False
                     if raw_buffer:
+                        answer_buf += raw_buffer
                         yield f"data: {json.dumps({'type': 'chunk', 'chunk': raw_buffer, 'done': False})}\n\n"
                         raw_buffer = ""
                     continue
@@ -207,6 +227,7 @@ async def analyze_image(
                 if in_think:
                     yield f"data: {json.dumps({'type': 'think', 'chunk': raw_buffer})}\n\n"
                 else:
+                    answer_buf += raw_buffer
                     yield f"data: {json.dumps({'type': 'chunk', 'chunk': raw_buffer, 'done': False})}\n\n"
                 raw_buffer = ""
 
@@ -215,6 +236,7 @@ async def analyze_image(
                 if in_think:
                     yield f"data: {json.dumps({'type': 'think', 'chunk': raw_buffer})}\n\n"
                 else:
+                    answer_buf += raw_buffer
                     yield f"data: {json.dumps({'type': 'chunk', 'chunk': raw_buffer, 'done': False})}\n\n"
 
             if in_think:
@@ -222,6 +244,21 @@ async def analyze_image(
                 yield f"data: {json.dumps({'type': 'think_done', 'duration': duration})}\n\n"
 
             yield f"data: {json.dumps({'type': 'done', 'chunk': '', 'done': True})}\n\n"
+
+            db_save = SessionLocal()
+            try:
+                db_save.add(models.ChatLog(
+                    doctor_id=doctor.id,
+                    patient_id=patient_id,
+                    query=f"[Uploaded Image: {image_url}] {question}" if question else f"[Uploaded Image: {image_url}]",
+                    response=answer_buf,
+                    intent_detected="image_analysis"
+                ))
+                db_save.commit()
+            except Exception as db_err:
+                print(f"Error saving image analysis to database: {db_err}")
+            finally:
+                db_save.close()
 
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"

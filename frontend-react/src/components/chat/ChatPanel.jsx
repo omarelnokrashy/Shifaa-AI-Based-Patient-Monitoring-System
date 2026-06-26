@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Send, ImagePlus, Brain, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Send, ImagePlus, Brain, ChevronDown, ChevronUp, Loader2, X, ScanSearch } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useChatStream } from '../../hooks/useChatStream'
 import Button from '../ui/Button'
@@ -29,8 +29,8 @@ import Button from '../ui/Button'
  *   - `'general'`  — general medical Q&A without patient context.
  * @returns {JSX.Element}
  */
-export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
-  const [mode, setMode] = useState(initialMode)
+export default function ChatPanel({ patient }) {
+  const mode = patient ? 'patient' : 'general'
   const [input, setInput] = useState('')
   const [thinkExpanded, setThinkExpanded] = useState(false)
   const bottomRef = useRef(null)
@@ -40,9 +40,9 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
   const fileInputRef = useRef(null)
 
   const {
-    messages, isThinking, thinkText, thinkDone, isStreaming,
+    messages, isThinking, thinkText, thinkDone, isStreaming, isImageAnalyzing,
     sendMessage, clearMessages,
-  } = useChatStream()
+  } = useChatStream(patient?.id, mode)
 
   // Auto-expand reasoning while thinking, auto-collapse once done
   useEffect(() => { if (isThinking) setThinkExpanded(true)  }, [isThinking])
@@ -105,23 +105,13 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-navy-100">
-        <div className="flex items-center gap-1 bg-navy-100 rounded-lg p-1">
-          {['patient', 'general'].map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); clearMessages() }}
-              className={clsx(
-                'px-3 py-1.5 rounded-md text-sm font-medium transition-all',
-                mode === m
-                  ? 'bg-white text-navy-900 shadow-sm'
-                  : 'text-navy-500 hover:text-navy-700',
-              )}
-            >
-              {m === 'patient' ? (patient ? `${patient.name.split(' ')[0]} Q&A` : 'Patient Q&A') : 'General Q&A'}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Brain size={18} className="text-teal-600 shrink-0" />
+          <span className="font-semibold text-navy-900">
+            {patient ? `Specialized Chat — ${patient.name}` : 'Global Medical Q&A'}
+          </span>
         </div>
-        {mode === 'patient' && patient && (
+        {patient && (
           <span className="text-xs text-navy-400 font-mono">
             ID #{patient.id}
           </span>
@@ -149,6 +139,14 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
         {messages.map((msg) => (
           <MessageBubble key={msg.id} msg={msg} />
         ))}
+
+        {/* Image analyzing indicator — shown while waiting for MedGemma vision response */}
+        {isImageAnalyzing && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 border border-teal-200 rounded-xl text-teal-700 text-xs font-medium">
+            <ScanSearch size={14} className="animate-pulse shrink-0" />
+            <span>Analyzing image with MedGemma 1.5…</span>
+          </div>
+        )}
 
         {/* Reasoning block (while thinking or after thought) */}
         {(isThinking || thinkDone) && (
@@ -188,23 +186,21 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
       <div className="border-t border-navy-100 bg-white p-3">
         {/* Image Preview Block */}
         {selectedFile && (
-          <div className="mb-2 px-3 py-2 bg-navy-50/50 border border-navy-100 rounded-lg flex items-center gap-3">
-            <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-navy-200 bg-white shrink-0">
+          <div className="mb-2 px-3 py-2 bg-teal-50/60 border border-teal-200 rounded-xl flex items-center gap-3">
+            <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-teal-300 bg-white shrink-0 shadow-sm">
               <img
                 src={URL.createObjectURL(selectedFile)}
                 alt="Preview"
                 className="w-full h-full object-cover"
               />
-              <button
-                type="button"
-                onClick={() => setSelectedFile(null)}
-                className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl hover:bg-red-600 transition-colors"
-              >
-                <span className="block text-[8px] font-bold leading-none">X</span>
-              </button>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-navy-700 truncate">{selectedFile.name}</p>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded">
+                  MedGemma 1.5
+                </span>
+              </div>
+              <p className="text-xs font-medium text-navy-800 truncate">{selectedFile.name}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-[10px] text-navy-400">Scan type:</span>
                 <select
@@ -221,6 +217,14 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
                 </select>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+              className="p-1.5 text-navy-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+              title="Remove image"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
 
@@ -237,7 +241,7 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
             onClick={() => fileInputRef.current?.click()}
             className="p-2 text-navy-400 hover:text-teal-600 hover:bg-navy-50 rounded-lg transition-colors mb-0.5 shrink-0"
             title="Upload medical image"
-            disabled={isStreaming || isThinking}
+          disabled={isStreaming || isThinking || isImageAnalyzing}
           >
             <ImagePlus size={20} />
           </button>
@@ -248,19 +252,21 @@ export default function ChatPanel({ patient, mode: initialMode = 'patient' }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              mode === 'patient' && patient
+              selectedFile
+                ? 'Add a question about this image… or press Send to analyze'
+                : mode === 'patient' && patient
                 ? `Ask about ${patient.name}… (Enter to send)`
                 : 'Ask a general medical question… (Enter to send)'
             }
             className="flex-1 resize-none px-3 py-2 text-sm bg-navy-50 border border-navy-200 rounded-lg
                        text-navy-900 placeholder-navy-400 focus:outline-none focus:ring-2 focus:ring-teal-500
                        focus:border-teal-500 transition-colors"
-            disabled={isStreaming || isThinking}
+            disabled={isStreaming || isThinking || isImageAnalyzing}
           />
           <Button
             onClick={handleSend}
-            disabled={(!input.trim() && !selectedFile) || isStreaming || isThinking}
-            loading={isStreaming || isThinking}
+            disabled={(!input.trim() && !selectedFile) || isStreaming || isThinking || isImageAnalyzing}
+            loading={isStreaming || isThinking || isImageAnalyzing}
             size="icon"
             className="mb-0.5 shrink-0"
             aria-label="Send message"
@@ -306,12 +312,18 @@ function MessageBubble({ msg }) {
         )}
       >
         {isUser && msg.image && (
-          <div className="mb-2 max-w-[200px] rounded-lg overflow-hidden border border-navy-600 bg-white">
-            <img src={msg.image} alt="Uploaded attachment" className="w-full h-auto max-h-[150px] object-contain" />
+          <div className="mb-2">
+            <div className="max-w-[220px] rounded-xl overflow-hidden border border-navy-500/30 bg-white shadow-sm">
+              <img src={msg.image} alt="Uploaded medical image" className="w-full h-auto max-h-[180px] object-contain" />
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[10px] text-navy-300">
+              <ScanSearch size={10} />
+              <span>Sent to MedGemma 1.5</span>
+            </div>
           </div>
         )}
         {isUser ? (
-          <p className="whitespace-pre-wrap">{msg.content}</p>
+          <p className="whitespace-pre-wrap">{msg.content || <span className="italic text-navy-300">[Image attached]</span>}</p>
         ) : (
           <div className="prose prose-sm prose-navy max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>

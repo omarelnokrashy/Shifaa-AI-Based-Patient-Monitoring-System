@@ -97,10 +97,11 @@ class AlertOut(BaseModel):
     severity: str
     details: Optional[dict] = None
     created_at: Optional[datetime] = None
-    acknowledged_by: Optional[int] = None
+    acknowledged_by: Optional[str] = None
     acknowledged_at: Optional[datetime] = None
     acknowledged: bool = False
     patient_name: Optional[str] = None
+    alert_id: Optional[int] = None
     class Config:
         from_attributes = True
 
@@ -126,3 +127,17 @@ class ChatResponse(BaseModel):
     answer: str
     intent: str
     sources: List[str]
+
+class ChatLogOut(BaseModel):
+    """Serialized format of a single chat database record."""
+    id: int
+    doctor_id: Optional[int]
+    patient_id: Optional[int]
+    query: Optional[str]
+    response: Optional[str]
+    intent_detected: Optional[str]
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+

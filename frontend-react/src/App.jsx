@@ -31,7 +31,8 @@ import PatientListPage    from './pages/doctor/PatientListPage'
 import PatientDetailPage  from './pages/doctor/PatientDetailPage'
 import LiveMonitoringPage from './pages/doctor/LiveMonitoringPage'
 import SandboxTestPage    from './pages/doctor/SandboxTestPage'
-
+import GlobalChatPage     from './pages/doctor/GlobalChatPage'
+import RoomDetailsPage    from './pages/doctor/RoomDetailsPage'
 
 // Nurse
 import NurseDashboard from './pages/nurse/NurseDashboard'
@@ -39,6 +40,7 @@ import NurseDashboard from './pages/nurse/NurseDashboard'
 // Admin
 import AdminDashboard    from './pages/admin/AdminDashboard'
 import UserManagementPage from './pages/admin/UserManagementPage'
+import RoomManagementPage from './pages/admin/RoomManagementPage'
 
 // ── Role guard ────────────────────────────────────────────────────────────────
 /**
@@ -105,8 +107,9 @@ export default function App() {
           <Route path="/doctor/patients"             element={<PatientListPage />} />
           <Route path="/doctor/patients/:id"         element={<PatientDetailPage />} />
           <Route path="/doctor/monitoring"           element={<LiveMonitoringPage />} />
+          <Route path="/doctor/rooms/:roomId"        element={<RoomDetailsPage />} />
+          <Route path="/doctor/chat"                 element={<GlobalChatPage />} />
           <Route path="/doctor/sandbox"              element={<SandboxTestPage />} />
-
         </Route>
       </Route>
 
@@ -114,10 +117,10 @@ export default function App() {
       <Route element={<RoleGuard allowedRole="nurse" />}>
         <Route element={<NavShell />}>
           <Route path="/nurse/dashboard"   element={<NurseDashboard />} />
-          {/* Reuse patient list + detail — the read-only behavior is
-              enforced by the API (nurses can't run ECG analysis, etc.) */}
           <Route path="/nurse/patients"    element={<PatientListPage />} />
           <Route path="/nurse/patients/:id" element={<PatientDetailPage />} />
+          <Route path="/nurse/monitoring"   element={<LiveMonitoringPage />} />
+          <Route path="/nurse/rooms/:roomId" element={<RoomDetailsPage />} />
         </Route>
       </Route>
 
@@ -126,6 +129,9 @@ export default function App() {
         <Route element={<NavShell />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users"     element={<UserManagementPage />} />
+          <Route path="/admin/monitoring" element={<LiveMonitoringPage />} />
+          <Route path="/admin/rooms"     element={<RoomManagementPage />} />
+          <Route path="/admin/rooms/:roomId" element={<RoomDetailsPage />} />
         </Route>
       </Route>
 

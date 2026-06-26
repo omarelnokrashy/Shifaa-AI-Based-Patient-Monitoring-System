@@ -121,6 +121,37 @@ export const apiGetPatient = async (id) => {
 }
 
 /**
+ * Fetch chat history for a doctor-patient conversation.
+ *
+ * @param {number|string} patientId - The patient's ID.
+ * @returns {Promise<Object[]>} List of historical chat logs.
+ */
+export const apiGetChatHistory = async (patientId) => {
+  if (IS_MOCK) {
+    await delay()
+    return []
+  }
+  const { data } = await http.get(`/api/chat/history/${patientId}`)
+  return data
+}
+
+/**
+ * Fetch general chat history for the logged-in doctor.
+ *
+ * @returns {Promise<Object[]>} List of historical chat logs.
+ */
+export const apiGetGeneralChatHistory = async () => {
+  if (IS_MOCK) {
+    await delay()
+    return []
+  }
+  const { data } = await http.get('/api/chat/general/history')
+  return data
+}
+
+
+
+/**
  * Create a new patient record.
  *
  * @param {Object} payload - Patient fields (name, dob, gender, etc.).
@@ -144,7 +175,7 @@ export const apiCreatePatient = async (payload) => {
  * @param {number|string|null} [patientId=null] - Patient ID to filter by, or `null` for all alerts.
  * @returns {Promise<Object[]>} Array of alert objects.
  */
-export const apiGetAlerts = async (patientId = null) => {
+export const apiGetAlerts = async (patientId = null, historyOnly = false) => {
   if (IS_MOCK) {
     await delay()
     const user = useAuthStore.getState().user
@@ -154,12 +185,19 @@ export const apiGetAlerts = async (patientId = null) => {
     } else if (user && user.role === 'nurse') {
       list = list.filter((a) => a.patient_id % 2 === 0)
     }
-    return patientId
-      ? list.filter((a) => a.patient_id === Number(patientId))
-      : list
+    if (patientId) {
+      let filtered = list.filter((a) => a.patient_id === Number(patientId))
+      if (historyOnly) {
+        filtered = filtered.filter((a) => a.acknowledged)
+      }
+      return filtered
+    }
+    return list
   }
   if (patientId) {
-    const { data } = await http.get(`/api/patients/${patientId}/alerts`)
+    const { data } = await http.get(`/api/patients/${patientId}/alerts`, {
+      params: { history_only: historyOnly }
+    })
     return data
   }
   const { data } = await http.get('/api/dashboard/summary')
@@ -181,6 +219,23 @@ export const apiAcknowledgeAlert = async (alertId, userId) => {
     return { ok: true }
   }
   const { data } = await http.patch(`/api/dashboard/alerts/${alertId}/acknowledge`, { acknowledged_by: userId })
+  return data
+}
+
+/**
+ * Cancel an active alert entirely (no history saved).
+ *
+ * @param {number} alertId - The ID of the alert to cancel.
+ * @returns {Promise<Object>} Confirmation object (e.g. `{ ok: true }`).
+ */
+export const apiCancelAlert = async (alertId) => {
+  if (IS_MOCK) {
+    await delay(150)
+    const idx = MOCK_ALERTS.findIndex((x) => x.id === alertId)
+    if (idx !== -1) MOCK_ALERTS.splice(idx, 1)
+    return { ok: true }
+  }
+  const { data } = await http.delete(`/api/dashboard/alerts/${alertId}/cancel`)
   return data
 }
 
@@ -356,6 +411,219 @@ export const apiRandomlyAssignPatients = async () => {
     return { status: 'success', message: 'Mock patient assignments created successfully.' }
   }
   const { data } = await http.post('/api/admin/assign-patients')
+  return data
+}
+
+
+// ── Room Management Mock Data & APIs ─────────────────────────────────────────
+
+let MOCK_ROOMS = [
+  {
+    id: 1,
+    room_number: "101",
+    room_name: "ICU Bed A",
+    floor: "1",
+    patient_id: 1,
+    monitoring_status: "Monitoring",
+    patient: { id: 1, name: "Ahmed Hassan", gender: "Male", dob: "1980-05-15", blood_type: "A+" },
+    services: ["ecg", "seizure"],
+    nurses: [{ id: 2, name: "Nurse Sara Mohamed", email: "nurse@hospital.com", role: "nurse" }],
+    active_alerts: [],
+    risk_score: 0.0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 2,
+    room_number: "102",
+    room_name: "ICU Bed B",
+    floor: "1",
+    patient_id: 2,
+    monitoring_status: "Warning",
+    patient: { id: 2, name: "Jane Smith", gender: "Female", dob: "1992-08-22", blood_type: "O-" },
+    services: ["fall"],
+    nurses: [{ id: 2, name: "Nurse Sara Mohamed", email: "nurse@hospital.com", role: "nurse" }],
+    active_alerts: [{ id: 101, alert_type: "fall", severity: "medium", details: { message: "Patient moving near bed edge" }, created_at: new Date().toISOString() }],
+    risk_score: 0.65,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 3,
+    room_number: "103",
+    room_name: "Ward Room A",
+    floor: "1",
+    patient_id: null,
+    monitoring_status: "Idle",
+    patient: null,
+    services: ["ecg"],
+    nurses: [],
+    active_alerts: [],
+    risk_score: 0.0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 4,
+    room_number: "201",
+    room_name: "Neurology Suite",
+    floor: "2",
+    patient_id: 3,
+    monitoring_status: "Critical Alert",
+    patient: { id: 3, name: "Michael Vance", gender: "Male", dob: "1965-11-02", blood_type: "B+" },
+    services: ["ecg", "seizure", "fall"],
+    nurses: [{ id: 2, name: "Nurse Sara Mohamed", email: "nurse@hospital.com", role: "nurse" }],
+    active_alerts: [{ id: 102, alert_type: "seizure", severity: "critical", details: { gate_score: 0.98 }, created_at: new Date().toISOString() }],
+    risk_score: 0.98,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+];
+
+export const apiGetRooms = async (params = {}) => {
+  if (IS_MOCK) {
+    await delay();
+    let list = [...MOCK_ROOMS];
+    const user = useAuthStore.getState().user;
+    if (user && user.role === 'nurse') {
+      list = list.filter(r => r.nurses.some(n => n.id === Number(user.id)));
+    }
+    if (params.search) {
+      const s = params.search.toLowerCase();
+      list = list.filter(r => 
+        r.room_number.includes(s) ||
+        (r.room_name && r.room_name.toLowerCase().includes(s)) ||
+        (r.patient && r.patient.name.toLowerCase().includes(s)) ||
+        r.nurses.some(n => n.name.toLowerCase().includes(s))
+      );
+    }
+    if (params.service) {
+      list = list.filter(r => r.services.includes(params.service.toLowerCase()));
+    }
+    if (params.nurse_id) {
+      list = list.filter(r => r.nurses.some(n => n.id === Number(params.nurse_id)));
+    }
+    if (params.floor) {
+      list = list.filter(r => r.floor === params.floor);
+    }
+    if (params.status_filter) {
+      list = list.filter(r => r.monitoring_status.toLowerCase() === params.status_filter.toLowerCase());
+    }
+    if (params.sort_by) {
+      if (params.sort_by === 'room_number') {
+        list.sort((a, b) => a.room_number.localeCompare(b.room_number));
+      } else if (params.sort_by === 'patient_name') {
+        list.sort((a, b) => (a.patient?.name || 'zzz').localeCompare(b.patient?.name || 'zzz'));
+      } else if (params.sort_by === 'highest_risk') {
+        list.sort((a, b) => b.risk_score - a.risk_score);
+      }
+    }
+    return list;
+  }
+  const { data } = await http.get('/api/rooms', { params })
+  return data
+}
+
+export const apiGetRoom = async (id) => {
+  if (IS_MOCK) {
+    await delay();
+    const r = MOCK_ROOMS.find(x => x.id === Number(id));
+    if (!r) throw new Error('Room not found');
+    return r;
+  }
+  const { data } = await http.get(`/api/rooms/${id}`)
+  return data
+}
+
+export const apiCreateRoom = async (payload) => {
+  if (IS_MOCK) {
+    await delay();
+    const r = {
+      ...payload,
+      id: Date.now(),
+      monitoring_status: payload.patient_id ? 'Monitoring' : 'Idle',
+      patient: payload.patient_id ? MOCK_PATIENTS.find(p => p.id === payload.patient_id) : null,
+      nurses: payload.nurse_ids ? MOCK_USERS.filter(u => payload.nurse_ids.includes(u.id)) : [],
+      active_alerts: [],
+      risk_score: 0.0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    MOCK_ROOMS.push(r);
+    return r;
+  }
+  const { data } = await http.post('/api/rooms', payload)
+  return data
+}
+
+export const apiUpdateRoom = async (id, payload) => {
+  if (IS_MOCK) {
+    await delay();
+    const idx = MOCK_ROOMS.findIndex(x => x.id === Number(id));
+    if (idx === -1) throw new Error('Room not found');
+    const existing = MOCK_ROOMS[idx];
+    const updated = {
+      ...existing,
+      ...payload,
+      patient: payload.patient_id ? MOCK_PATIENTS.find(p => p.id === payload.patient_id) : null,
+      nurses: payload.nurse_ids ? MOCK_USERS.filter(u => payload.nurse_ids.includes(u.id)) : [],
+      updated_at: new Date().toISOString()
+    };
+    MOCK_ROOMS[idx] = updated;
+    return updated;
+  }
+  const { data } = await http.put(`/api/rooms/${id}`, payload)
+  return data
+}
+
+export const apiDeleteRoom = async (id) => {
+  if (IS_MOCK) {
+    await delay();
+    MOCK_ROOMS = MOCK_ROOMS.filter(x => x.id !== Number(id));
+    return { status: 'success' };
+  }
+  const { data } = await http.delete(`/api/rooms/${id}`)
+  return data
+}
+
+export const apiAssignPatient = async (roomId, patientId) => {
+  if (IS_MOCK) {
+    await delay();
+    const room = MOCK_ROOMS.find(x => x.id === Number(roomId));
+    if (!room) throw new Error('Room not found');
+    room.patient_id = patientId;
+    room.patient = patientId ? MOCK_PATIENTS.find(p => p.id === patientId) : null;
+    room.monitoring_status = patientId ? 'Monitoring' : 'Idle';
+    room.updated_at = new Date().toISOString();
+    return room;
+  }
+  const { data } = await http.post(`/api/rooms/${roomId}/assign-patient`, { patient_id: patientId })
+  return data
+}
+
+export const apiAssignNurses = async (roomId, nurseIds) => {
+  if (IS_MOCK) {
+    await delay();
+    const room = MOCK_ROOMS.find(x => x.id === Number(roomId));
+    if (!room) throw new Error('Room not found');
+    room.nurses = MOCK_USERS.filter(u => nurseIds.includes(u.id));
+    room.updated_at = new Date().toISOString();
+    return room;
+  }
+  const { data } = await http.post(`/api/rooms/${roomId}/assign-nurses`, { nurse_ids: nurseIds })
+  return data
+}
+
+export const apiAssignServices = async (roomId, services) => {
+  if (IS_MOCK) {
+    await delay();
+    const room = MOCK_ROOMS.find(x => x.id === Number(roomId));
+    if (!room) throw new Error('Room not found');
+    room.services = services;
+    room.updated_at = new Date().toISOString();
+    return room;
+  }
+  const { data } = await http.post(`/api/rooms/${roomId}/assign-services`, { services })
   return data
 }
 

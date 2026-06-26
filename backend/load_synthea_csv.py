@@ -27,7 +27,7 @@ from backend import models
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-DATA_DIR = "/media/omar/Graduation Project/GP/Project/Data"
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "Data"))
 
 def import_data():
     """
@@ -44,6 +44,16 @@ def import_data():
     to keep memory usage low.
     """
     engine = create_engine(DATABASE_URL)
+    if DATABASE_URL.startswith("sqlite"):
+        from sqlalchemy import event
+        @event.listens_for(engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA synchronous = OFF")
+            cursor.execute("PRAGMA journal_mode = MEMORY")
+            cursor.execute("PRAGMA cache_size = 100000")
+            cursor.execute("PRAGMA temp_store = MEMORY")
+            cursor.close()
     print("Starting full Synthea mapping import...")
 
     # 1. Load Patients and keep UUID map
@@ -126,7 +136,12 @@ def import_data():
             
             # Apply specific mapping
             import_df = mapping_func(chunk)
-            import_df.to_sql(target_table, engine, if_exists='append', index=False, method='multi', chunksize=1000)
+            
+            # Optimize for SQLite bulk insert
+            if DATABASE_URL.startswith("sqlite"):
+                import_df.to_sql(target_table, engine, if_exists='append', index=False, chunksize=10000)
+            else:
+                import_df.to_sql(target_table, engine, if_exists='append', index=False, method='multi', chunksize=1000)
             print(f"  Inserted a chunk into {target_table}...")
         print(f"  Done {target_table}.")
 
@@ -170,6 +185,27 @@ def import_data():
         'reaction': df.get('REACTION1', 'Unknown'),
         'severity': df.get('SEVERITY1', 'moderate').fillna('moderate')
     }))
+
+    # 7. Create Patient Assignments for all doctors and nurses
+    print("Creating patient assignments for all doctors and nurses...")
+    doctors_and_nurses = session.query(models.User).filter(models.User.role.in_(['doctor', 'nurse'])).all()
+    patients = session.query(models.Patient).all()
+    
+    assignments = []
+    # Query existing assignments to avoid duplicates
+    existing_pairs = set(
+        (a.user_id, a.patient_id) for a in session.query(models.PatientAssignment).all()
+    )
+    
+    for u in doctors_and_nurses:
+        for p in patients:
+            if (u.id, p.id) not in existing_pairs:
+                assignments.append(models.PatientAssignment(user_id=u.id, patient_id=p.id))
+                
+    if assignments:
+        session.bulk_save_objects(assignments)
+        session.commit()
+    print(f"Created {len(assignments)} patient assignments.")
 
     print("Synthea import finished successfully!")
 

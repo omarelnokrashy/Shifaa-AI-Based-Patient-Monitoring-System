@@ -1,6 +1,6 @@
 /**
  * @file Modal.jsx
- * @description Accessible overlay modal dialog for the MedMonitor UI.
+ * @description Accessible overlay modal dialog for the Shifaa UI.
  *
  * Accessibility features:
  *   - Rendered with `role="dialog"` and `aria-modal="true"` so screen readers
@@ -12,10 +12,9 @@
  *
  * Sizes: `sm` (max-w-md) · `md` (max-w-xl) · `lg` (max-w-2xl) · `xl` (max-w-4xl).
  */
-import { useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
 import { clsx } from 'clsx'
-import Button from './Button'
+import { X } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 const sizes = {
   sm: 'max-w-md',

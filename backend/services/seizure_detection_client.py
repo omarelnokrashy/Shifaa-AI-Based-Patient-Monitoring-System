@@ -122,3 +122,15 @@ async def subscribe_and_forward(session_id: str, on_event) -> None:
                     log.debug(f"Event parse error: {exc}")
     except Exception as exc:
         log.warning(f"Seizure WebSocket disconnected for session {session_id}: {exc}")
+
+
+async def reset_latch(session_id: str) -> dict:
+    """Reset the seizure alert latch for the given session."""
+    try:
+        resp = await _client.post(f"/sessions/{session_id}/reset-latch")
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:
+        msg = f"Could not reset seizure alert latch for session {session_id}: {exc}"
+        log.error(msg)
+        return {"error": msg}

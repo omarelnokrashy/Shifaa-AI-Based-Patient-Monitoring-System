@@ -3,20 +3,18 @@
  * The heaviest page in the app; each tab is lazy-loaded via conditional rendering.
  */
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
-  ArrowLeft, User, MessageSquare, HeartPulse,
+  ArrowLeft, User, MessageSquare,
   Activity, AlertCircle,
 } from 'lucide-react'
 import Card, { CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { SeverityBadge } from '../../components/ui/Badge'
 import ChatPanel from '../../components/chat/ChatPanel'
-import ECGChart, { ArrhythmiaResultCard } from '../../components/ecg/ECGChart'
 import AlertFeed from '../../components/monitoring/AlertFeed'
-import { apiGetPatient, apiGetAlerts, apiAnalyzeECG } from '../../api/client'
-import { generateMockECG } from '../../mock/data'
+import { apiGetPatient, apiGetAlerts } from '../../api/client'
 import { calcAge, formatDate } from '../../components/utils/time'
 import useAuthStore from '../../store/authStore'
 
@@ -24,7 +22,6 @@ import useAuthStore from '../../store/authStore'
 const TABS = [
   { id: 'overview',    label: 'Overview',   Icon: User },
   { id: 'chat',        label: 'Chat',        Icon: MessageSquare },
-  { id: 'ecg',         label: 'ECG / Arrhythmia', Icon: HeartPulse },
   { id: 'monitoring',  label: 'Monitoring',  Icon: Activity },
 ]
 
@@ -40,7 +37,11 @@ const TABS = [
 export default function PatientDetailPage() {
   const { id }     = useParams()
   const navigate   = useNavigate()
-  const [tab, setTab]         = useState('overview')
+  const location   = useLocation()
+  const queryParams = new URLSearchParams(location.search)
+  const highlightAlertId = queryParams.get('highlightAlert')
+
+  const [tab, setTab]         = useState(highlightAlertId ? 'monitoring' : 'overview')
   const [patient, setPatient] = useState(null)
   const [alerts, setAlerts]   = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,11 +50,15 @@ export default function PatientDetailPage() {
   useEffect(() => {
     Promise.all([
       apiGetPatient(id),
-      apiGetAlerts(id),
+      apiGetAlerts(id, false),
     ]).then(([p, a]) => {
       setPatient(p); setAlerts(a); setLoading(false)
     })
   }, [id])
+
+  useEffect(() => {
+    if (highlightAlertId) setTab('monitoring')
+  }, [highlightAlertId])
 
   if (loading) return <LoadingState />
   if (!patient) return <p className="text-navy-400 p-8">Patient not found.</p>
@@ -118,8 +123,7 @@ export default function PatientDetailPage() {
           <ChatPanel patient={patient} />
         </div>
       )}
-      {tab === 'ecg'        && <ECGTab patient={patient} />}
-      {tab === 'monitoring' && <MonitoringTab patient={patient} alerts={alerts} />}
+      {tab === 'monitoring' && <MonitoringTab patient={patient} alerts={alerts} highlightId={highlightAlertId} />}
     </div>
   )
 }
@@ -228,58 +232,6 @@ function OverviewTab({ patient }) {
   )
 }
 
-// ── ECG tab ───────────────────────────────────────────────────────────────────
-/**
- * Renders the ECG waveform chart for the patient together with an
- * "Run AI Analysis" button that triggers arrhythmia detection.
- *
- * @param {object} props
- * @param {object} props.patient - Patient object; `patient.id` is sent to the ECG API.
- * @returns {JSX.Element}
- */
-function ECGTab({ patient }) {
-  const [ecgData,  setEcgData]  = useState(generateMockECG())
-  const [result,   setResult]   = useState(null)
-  const [running,  setRunning]  = useState(false)
-
-  /**
-   * Sends a 12-lead ECG signal array to the arrhythmia analysis API and
-   * stores the classification result in component state.
-   *
-   * In production the real signal data would come from `patient.ecg_file`;
-   * for now a random signal is generated as a placeholder.
-   *
-   * @async
-   * @returns {Promise<void>}
-   */
-  const runAnalysis = async () => {
-    setRunning(true)
-    setResult(null)
-    // In real: send patient.ecg_file → signal array
-    const signal = Array.from({ length: 5000 }, () => Array.from({ length: 12 }, () => Math.random() * 2 - 1))
-    const r = await apiAnalyzeECG(patient.id, signal)
-    setResult(r)
-    setRunning(false)
-  }
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader
-          title="12-Lead ECG Waveform"
-          subtitle="Representative leads II, V1, V5"
-          action={
-            <Button onClick={runAnalysis} loading={running} size="sm">
-              <HeartPulse size={14} /> {running ? 'Analyzing…' : 'Run AI Analysis'}
-            </Button>
-          }
-        />
-        <ECGChart data={ecgData} result={result} />
-      </Card>
-    </div>
-  )
-}
-
 // ── Monitoring tab ────────────────────────────────────────────────────────────
 /**
  * Renders the full alert history for the patient inside a labelled card.
@@ -289,11 +241,11 @@ function ECGTab({ patient }) {
  * @param {object[]} props.alerts  - Array of alert objects to display in the feed.
  * @returns {JSX.Element}
  */
-function MonitoringTab({ patient, alerts }) {
+function MonitoringTab({ patient, alerts, highlightId }) {
   return (
     <Card>
       <CardHeader title="Monitoring History" subtitle={`Alerts for ${patient.name}`} icon={Activity} />
-      <AlertFeed alerts={alerts} />
+      <AlertFeed alerts={alerts} mode="history" highlightId={highlightId} />
     </Card>
   )
 }

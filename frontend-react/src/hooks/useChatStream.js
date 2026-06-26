@@ -12,8 +12,9 @@
  * In mock mode the hook simulates streaming by splitting a canned response
  * into chunks and emitting them with setInterval.
  */
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import useAuthStore from '../store/authStore'
+import { apiGetChatHistory, apiGetGeneralChatHistory } from '../api/client'
 
 const IS_MOCK  = import.meta.env.VITE_DATA_MODE !== 'live'
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -45,11 +46,12 @@ No drug interactions with current medications (Amlodipine). Penicillin allergy d
  *   thinkText:   string,
  *   thinkDone:   {text: string, duration: string|number}|null,
  *   isStreaming:  boolean,
+ *   isImageAnalyzing: boolean,
  *   sendMessage:  Function,
  *   clearMessages: Function
  * }}
  */
-export function useChatStream() {
+export function useChatStream(patientId = null, mode = 'patient') {
   const token = useAuthStore((s) => s.token)
   const wsRef = useRef(null)
 
@@ -58,6 +60,71 @@ export function useChatStream() {
   const [thinkText,   setThinkText]   = useState('')
   const [thinkDone,   setThinkDone]   = useState(null)  // { text, duration }
   const [isStreaming, setIsStreaming]  = useState(false)
+  const [isImageAnalyzing, setIsImageAnalyzing] = useState(false)
+
+  // Load chat history for patient-specific or general chat
+  useEffect(() => {
+    const parseQueryMessage = (log) => {
+      let content = log.query
+      let imageUrl = null
+      
+      if (log.query && log.query.startsWith('[Uploaded Image: ')) {
+        const closeIdx = log.query.indexOf(']')
+        if (closeIdx !== -1) {
+          const val = log.query.slice(17, closeIdx).trim()
+          if (val.startsWith('/uploads/') || val.startsWith('http') || val.includes('/chat_images/')) {
+            imageUrl = val.startsWith('/') ? `${BASE_URL}${val}` : val
+            content = log.query.slice(closeIdx + 1).trim()
+          }
+        }
+      }
+      
+      return {
+        role: 'user',
+        content: content,
+        image: imageUrl,
+        id: `${log.id}-user`
+      }
+    }
+
+    if (patientId && mode === 'patient') {
+      apiGetChatHistory(patientId)
+        .then((logs) => {
+          const loaded = []
+          logs.forEach((log) => {
+            if (log.query) {
+              loaded.push(parseQueryMessage(log))
+            }
+            if (log.response) {
+              loaded.push({ role: 'bot', content: log.response, id: `${log.id}-bot` })
+            }
+          })
+          setMessages(loaded)
+        })
+        .catch((err) => {
+          console.error("Failed to load chat history:", err)
+        })
+    } else if (mode === 'general') {
+      apiGetGeneralChatHistory()
+        .then((logs) => {
+          const loaded = []
+          logs.forEach((log) => {
+            if (log.query) {
+              loaded.push(parseQueryMessage(log))
+            }
+            if (log.response) {
+              loaded.push({ role: 'bot', content: log.response, id: `${log.id}-bot` })
+            }
+          })
+          setMessages(loaded)
+        })
+        .catch((err) => {
+          console.error("Failed to load general chat history:", err)
+        })
+    } else {
+      setMessages([])
+    }
+  }, [patientId, mode])
 
   /**
    * Append a single message object to the conversation list.
@@ -165,7 +232,7 @@ export function useChatStream() {
           setIsThinking(false)
           setThinkDone({ text: thinkAcc, duration: msg.duration })
         }
-        if (msg.type === 'chunk')       {
+        if (msg.type === 'chunk') {
           botAcc += msg.chunk
           setIsStreaming(true)
           setMessages((prev) => {
@@ -212,25 +279,28 @@ export function useChatStream() {
     const imageUrl = URL.createObjectURL(imageFile)
     addMessage({ role: 'user', content: userMsg, image: imageUrl, id: Date.now() })
 
-    setIsThinking(true)
+    // Use isStreaming as the send-gate (prevents double-sends).
+    // Do NOT set isThinking — that causes a stuck "Thinking..." spinner.
+    setIsStreaming(true)
+    setIsImageAnalyzing(true)
     setThinkText('')
     setThinkDone(null)
 
     if (IS_MOCK) {
       let thinkAcc = ''
       let thinkIdx = 0
-      const mockThink = `Analyzing uploaded ${imageType} image for patient #${patientId || 'unknown'}... Checking for visual markers, contrast variations, and key anatomical landmarks.`
-      const mockResponse = `I have reviewed the uploaded ${imageType} image. Based on the scan:
-- **Impression:** No acute cardiopulmonary abnormalities or critical findings are visible.
-- **Recommendations:** Correlate with clinical findings. Schedule a routine follow-up scan if symptoms persist.`
+      const mockThink = `Mock mode is enabled, so the uploaded ${imageType} image is not being sent to MedGemma. Preparing a non-diagnostic demo response.`
+      const mockResponse = `**Mock image-analysis mode**
+
+This is not MedGemma image reasoning. The frontend is running with \`VITE_DATA_MODE\` set to mock, so the uploaded image was displayed locally but not analyzed by the backend multimodal model.
+
+Switch the frontend to \`VITE_DATA_MODE=live\` and make sure the backend multimodal model is running to get real image reasoning.`
 
       const thinkInterval = setInterval(() => {
         if (thinkIdx >= mockThink.length) {
           clearInterval(thinkInterval)
-          setIsThinking(false)
-          setThinkDone({ text: thinkAcc, duration: '1.8' })
+          setIsImageAnalyzing(false)
 
-          setIsStreaming(true)
           let ansAcc = ''
           let ansIdx = 0
           const answerInterval = setInterval(() => {
@@ -328,6 +398,8 @@ export function useChatStream() {
             }
             if (msg.type === 'done') {
               setIsStreaming(false)
+              setIsImageAnalyzing(false)
+              setIsThinking(false)   // clear any thinking that may have started
               addMessage({ role: 'bot', content: botAcc, id: Date.now() })
               setMessages((prev) => prev.filter((m) => m.id !== 'streaming'))
             }
@@ -335,6 +407,7 @@ export function useChatStream() {
               addMessage({ role: 'bot', content: `⚠️ ${msg.message}`, id: Date.now(), isError: true })
               setIsStreaming(false)
               setIsThinking(false)
+              setIsImageAnalyzing(false)
             }
           } catch (e) {
             // Ignore parse errors on half-read lines
@@ -342,9 +415,13 @@ export function useChatStream() {
         }
       }
     } catch (err) {
-      addMessage({ role: 'bot', content: `⚠️ Connection error: ${err.message}`, id: Date.now(), isError: true })
+      const message = err?.message === 'Failed to fetch'
+        ? `API unreachable at ${BASE_URL}. Make sure the FastAPI backend is running on port 8000, then retry the image upload.`
+        : err.message
+      addMessage({ role: 'bot', content: `⚠️ Connection error: ${message}`, id: Date.now(), isError: true })
       setIsStreaming(false)
       setIsThinking(false)
+      setIsImageAnalyzing(false)
     }
   }, [token, addMessage])
 
@@ -379,7 +456,8 @@ export function useChatStream() {
     setThinkText('')
     setThinkDone(null)
     setIsStreaming(false)
+    setIsImageAnalyzing(false)
   }, [])
 
-  return { messages, isThinking, thinkText, thinkDone, isStreaming, sendMessage, clearMessages }
+  return { messages, isThinking, thinkText, thinkDone, isStreaming, isImageAnalyzing, sendMessage, clearMessages }
 }
