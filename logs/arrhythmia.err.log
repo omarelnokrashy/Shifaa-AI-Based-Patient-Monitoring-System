@@ -1,0 +1,8 @@
+INFO:     Started server process [34832]
+INFO:     Waiting for application startup.
+2026-06-27 01:23:48,381 [arrhythmia] INFO Loading models on device=cuda
+2026-06-27 01:23:48,914 [arrhythmia] INFO Both ECG models loaded successfully.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2026-06-27 01:48:40,433 [arrhythmia] INFO Stage 1: Abnormal (1.000)
+2026-06-27 01:48:40,450 [arrhythmia] INFO Stage 2: IAVB (0.957)

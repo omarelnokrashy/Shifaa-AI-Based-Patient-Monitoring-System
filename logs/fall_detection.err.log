@@ -1,0 +1,137 @@
+INFO:     Started server process [15556]
+INFO:     Waiting for application startup.
+2026-06-27 01:23:52,235 [fall-svc] INFO Loading fall detection models on device=cuda
+2026-06-27 01:23:53,326 [fall-svc] INFO Fall detection models loaded.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+2026-06-27 01:25:58,053 [fall-svc] INFO Session created: room_id=sandbox_1037
+INFO:     ('127.0.0.1', 63488) - "WebSocket /ws/sandbox_1037" [accepted]
+2026-06-27 01:26:00,126 [fall-svc] INFO WebSocket connected: room_id=sandbox_1037
+INFO:     connection open
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+2026-06-27 01:26:50,384 [fall-svc] INFO Session deleted: room_id=sandbox_1037
+2026-06-27 01:27:02,268 [fall-svc] INFO Session created: room_id=sandbox_1037
+INFO:     ('127.0.0.1', 65440) - "WebSocket /ws/sandbox_1037" [accepted]
+2026-06-27 01:27:04,318 [fall-svc] INFO WebSocket connected: room_id=sandbox_1037
+INFO:     connection open
+2026-06-27 01:27:11,660 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:11,722 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:11,815 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:11,909 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:11,999 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,105 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,314 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,488 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,609 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,730 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,845 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:12,934 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:13,063 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:13,188 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:13,324 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:13,404 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:13,479 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:13,546 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:13,661 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.997
+2026-06-27 01:27:13,721 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.997
+2026-06-27 01:27:13,791 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.997
+2026-06-27 01:27:13,873 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.997
+2026-06-27 01:27:13,974 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.997
+2026-06-27 01:27:14,059 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.997
+2026-06-27 01:27:14,201 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:14,290 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:14,365 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:14,439 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:14,509 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:14,574 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.999
+2026-06-27 01:27:14,688 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:14,759 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:14,856 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:14,946 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,052 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,139 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,266 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,329 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,392 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,457 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,527 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,600 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,736 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,837 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:15,928 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,011 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,086 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,167 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,281 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,352 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,430 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,504 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,590 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,683 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=1.000
+2026-06-27 01:27:16,832 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.996
+2026-06-27 01:27:16,892 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.996
+2026-06-27 01:27:16,972 [fall-svc] WARNING FALL DETECTED room=sandbox_1037 track=3 p=0.996
+2026-06-27 01:27:17,058 [fall-svc] INFO Latch reset successfully for room_id=sandbox_1037
+2026-06-27 01:27:22,664 [fall-svc] INFO Session deleted: room_id=sandbox_1037
+2026-06-27 01:50:46,243 [fall-svc] INFO Session created: room_id=sandbox_1037
+INFO:     ('127.0.0.1', 52109) - "WebSocket /ws/sandbox_1037" [accepted]
+2026-06-27 01:50:48,306 [fall-svc] INFO WebSocket connected: room_id=sandbox_1037
+INFO:     connection open
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1782514261.577121   25240 calculator_graph.cc:887] INVALID_ARGUMENT: CalculatorGraph::Run() failed: 
+; Packet timestamp mismatch on a calculator receiving from stream "image". Current minimum expected timestamp is Timestamp::Done() but received 4566621. Are you using a custom InputStreamHandler? Note that some InputStreamHandlers allow timestamps that are not strictly monotonically increasing. See for example the ImmediateInputStreamHandler class comment.
+; Packet timestamp mismatch on a calculator receiving from stream "image". Current minimum expected timestamp is Timestamp::Done() but received 4566621. Are you using a custom InputStreamHandler? Note that some InputStreamHandlers allow timestamps that are not strictly monotonically increasing. See for example the ImmediateInputStreamHandler class comment.
+2026-06-27 01:51:01,581 [fall-svc] INFO Session deleted: room_id=sandbox_1037
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 244, in run_asgi
+    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\uvicorn\middleware\proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\middleware\errors.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\middleware\exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\routing.py", line 373, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\routing.py", line 96, in app
+    await wrap_app_handling_exceptions(app, session)(scope, receive, send)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\starlette\routing.py", line 94, in app
+    await func(session)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\fastapi\routing.py", line 348, in app
+    await dependant.call(**values)
+  File "F:\GP\Deployment\Medical-History-Chatbot\Repos\Patient-fall-detection-system-main\service.py", line 264, in ws_room
+    event = await asyncio.get_event_loop().run_in_executor(
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "F:\GP\Deployment\Medical-History-Chatbot\Repos\Patient-fall-detection-system-main\service.py", line 350, in _process_frame
+    result   = session.mp_pose.process(crop_rgb)
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\mediapipe\python\solutions\pose.py", line 185, in process
+    results = super().process(input_data={'image': image})
+  File "C:\Users\omars\miniconda3\envs\medical_chatbot\lib\site-packages\mediapipe\python\solution_base.py", line 335, in process
+    self._graph.wait_until_idle()
+ValueError: CalculatorGraph::Run() failed: 
+; Packet timestamp mismatch on a calculator receiving from stream "image". Current minimum expected timestamp is Timestamp::Done() but received 4566621. Are you using a custom InputStreamHandler? Note that some InputStreamHandlers allow timestamps that are not strictly monotonically increasing. See for example the ImmediateInputStreamHandler class comment.
+; Packet timestamp mismatch on a calculator receiving from stream "image". Current minimum expected timestamp is Timestamp::Done() but received 4566621. Are you using a custom InputStreamHandler? Note that some InputStreamHandlers allow timestamps that are not strictly monotonically increasing. See for example the ImmediateInputStreamHandler class comment.
+INFO:     connection closed
+INFO:     Shutting down
+2026-06-27 03:10:01,076 [fall-svc] INFO WebSocket disconnected: room_id=sandbox_1037
+2026-06-27 03:10:01,084 [fall-svc] INFO WebSocket disconnected: room_id=sandbox_1037
+INFO:     connection closed
+INFO:     connection closed

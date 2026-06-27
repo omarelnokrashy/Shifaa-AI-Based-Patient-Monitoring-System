@@ -1,0 +1,59 @@
+INFO:     Started server process [22916]
+INFO:     Waiting for application startup.
+2026-06-27 01:23:43,901 [seizure-svc] INFO Seizure detection service started.
+2026-06-27 01:23:47,888 [seizure-svc] INFO Loading global PyTorch models on device: cuda...
+Loading weights:   0%|          | 0/198 [00:00<?, ?it/s]Loading weights: 100%|##########| 198/198 [00:00<00:00, 24754.01it/s]
+[transformers] [1mVivitModel LOAD REPORT[0m from: google/vivit-b-16x2-kinetics400
+Key                 | Status     | 
+--------------------+------------+-
+classifier.weight   | UNEXPECTED | 
+classifier.bias     | UNEXPECTED | 
+pooler.dense.weight | MISSING    | 
+pooler.dense.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+2026-06-27 01:23:55,684 [seizure-svc] INFO Global PyTorch models loaded successfully.
+2026-06-27 01:23:55,685 [seizure-svc] INFO Starting background model warm-up...
+2026-06-27 01:23:55,687 [seizure-svc] INFO [warmup] Prepended to PATH: C:\python\Lib\site-packages\torch\lib
+2026-06-27 01:23:55,687 [seizure-svc] INFO [warmup] Launching C++ subprocess: F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection\runtime\build\seizure_runtime_cpp.exe run --root F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection --source F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection\sample_videos\pat10_Sz1P_demo_good.mp4 --output-csv F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection\runtime_outputs\alert_logs\warmup_alerts.csv --pipe-name \\.\pipe\seizure_vivit_tokens_warmup
+2026-06-27 01:23:55,717 [seizure-svc] INFO [warmup] Starting in-process token producer thread.
+2026-06-27 01:23:55,719 [seizure-svc] INFO [warmup] Token producer thread started.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+2026-06-27 01:24:01,946 [seizure-svc] INFO [warmup] Connected to pipe!
+2026-06-27 01:24:07,045 [seizure-svc] INFO [warmup] --- PROFILING PYTHON THREAD ---
+2026-06-27 01:24:07,046 [seizure-svc] INFO [warmup] ViViT mean: 0.00 ms
+2026-06-27 01:24:07,065 [seizure-svc] INFO [warmup] Token producer thread finished.
+2026-06-27 01:24:07,070 [seizure-svc] INFO [warmup] Session stopped.
+2026-06-27 01:24:07,070 [seizure-svc] INFO Background model warm-up complete and ready.
+2026-06-27 01:28:10,667 [seizure-svc] INFO [1037] Prepended to PATH: C:\python\Lib\site-packages\torch\lib
+2026-06-27 01:28:10,668 [seizure-svc] INFO [1037] Launching C++ subprocess: F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection\runtime\build\seizure_runtime_cpp.exe run --root F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection --source F:\GP\Deployment\Medical-History-Chatbot\uploads\seizure_test\test_1782512889_pat12_Sz2P_demo_good.mp4 --output-csv F:\GP\Deployment\Medical-History-Chatbot\Repos\seizure_detection\runtime_outputs\alert_logs\1037_alerts.csv --pipe-name \\.\pipe\seizure_vivit_tokens_1037
+2026-06-27 01:28:10,675 [seizure-svc] INFO [1037] Starting in-process token producer thread.
+2026-06-27 01:28:10,676 [seizure-svc] INFO [1037] Token producer thread started.
+2026-06-27 01:28:10,677 [seizure-svc] INFO Session started: 1037 source=F:\GP\Deployment\Medical-History-Chatbot\uploads\seizure_test\test_1782512889_pat12_Sz2P_demo_good.mp4 mode=monitor
+INFO:     ('127.0.0.1', 58801) - "WebSocket /ws/1037" [accepted]
+2026-06-27 01:28:10,995 [seizure-svc] INFO Client subscribed: session=1037 total_clients=1
+INFO:     connection open
+INFO:     ('127.0.0.1', 58802) - "WebSocket /ws/1037" [accepted]
+2026-06-27 01:28:12,736 [seizure-svc] INFO Client subscribed: session=1037 total_clients=2
+INFO:     connection open
+2026-06-27 01:28:14,042 [seizure-svc] INFO [1037] Connected to pipe!
+2026-06-27 01:28:19,061 [seizure-svc] INFO [1037] Processing segment at 5.00s slide=5.00s
+2026-06-27 01:28:21,159 [seizure-svc] INFO [1037] Wrote 48080 bytes to pipe
+2026-06-27 01:28:23,334 [seizure-svc] INFO [1037] Processing segment at 10.01s slide=5.00s
+2026-06-27 01:28:25,064 [seizure-svc] INFO [1037] Wrote 48080 bytes to pipe
+2026-06-27 01:28:27,087 [seizure-svc] INFO [1037] Processing segment at 15.02s slide=5.00s
+2026-06-27 01:28:28,728 [seizure-svc] INFO [1037] Wrote 48080 bytes to pipe
+2026-06-27 01:28:30,849 [seizure-svc] INFO [1037] Processing segment at 20.02s slide=5.00s
+2026-06-27 01:28:32,211 [seizure-svc] INFO Client unsubscribed: session=1037 remaining=1
+INFO:     connection closed
+2026-06-27 01:28:32,535 [seizure-svc] INFO [1037] Wrote 48080 bytes to pipe
+2026-06-27 01:28:32,535 [seizure-svc] INFO [1037] --- PROFILING PYTHON THREAD ---
+2026-06-27 01:28:32,537 [seizure-svc] INFO [1037] ViViT mean: 152.95 ms
+2026-06-27 01:28:32,561 [seizure-svc] INFO [1037] Token producer thread finished.
+2026-06-27 01:28:32,664 [seizure-svc] INFO [1037] Session stopped.
+INFO:     Shutting down
+2026-06-27 03:10:01,044 [seizure-svc] INFO Client unsubscribed: session=1037 remaining=0
+INFO:     connection closed

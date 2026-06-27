@@ -1,0 +1,172 @@
+INFO:     Will watch for changes in these directories: ['F:\\GP\\Deployment\\Medical-History-Chatbot']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [22668] using WatchFiles
+INFO:     Started server process [22824]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+F:\GP\Deployment\Medical-History-Chatbot\backend\routers\auth.py:38: SAWarning: relationship 'AlertHistory.acknowledger' will copy column users.id to column alert_history.acknowledged_by, which conflicts with relationship(s): 'User.acknowledged' (copies users.id to alert_history.acknowledged_by). If this is not the intention, consider if these relationships should be linked with back_populates, or if viewonly=True should be applied to one or more if they are read-only. For the less common case that foreign key constraints are partially overlapping, the orm.foreign() annotation can be used to isolate the columns that should be written towards.   To silence this warning, add the parameter 'overlaps="acknowledged"' to the 'AlertHistory.acknowledger' relationship. (Background on this warning at: https://sqlalche.me/e/20/qzyx) (This warning originated from the `configure_mappers()` process, which was invoked automatically in response to a user-initiated operation.)
+  db.query(models.User)
+INFO:     ('127.0.0.1', 51184) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 65062) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 59723) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+INFO:     ('127.0.0.1', 63486) - "WebSocket /api/ws/camera/sandbox_1037" [accepted]
+INFO:     connection open
+INFO:     connection closed
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+INFO:     ('127.0.0.1', 65437) - "WebSocket /api/ws/camera/sandbox_1037" [accepted]
+INFO:     connection open
+ALERT [fall] patient=1037 severity=critical id=1
+ALERT [fall] patient=1037 severity=critical id=2
+INFO:     connection closed
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+ALERT [seizure] patient=1037 severity=critical id=3
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+INFO:     ('127.0.0.1', 49904) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 55421) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 58109) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 56386) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 55565) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 63549) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 50230) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 52104) - "WebSocket /api/chat/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     ('127.0.0.1', 59527) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 53138) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 62509) - "WebSocket /api/chat/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 51337) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 49203) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2MjgzfQ.mc1g_FHYRmkEcffo2Kl_MG8ur5kLF0l-hF4-Q5BagEk" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     ('127.0.0.1', 63803) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6Im51cnNlIiwibmFtZSI6Ik51cnNlIFNhcmEgTW9oYW1lZCIsImV4cCI6MTc4MjUxNjcyMn0.28IP2_7Sx0gRAQKxqmotpJ9OTKuaPm7UfK6zSLmQhWI" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 64494) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6Im51cnNlIiwibmFtZSI6Ik51cnNlIFNhcmEgTW9oYW1lZCIsImV4cCI6MTc4MjUxNjcyMn0.28IP2_7Sx0gRAQKxqmotpJ9OTKuaPm7UfK6zSLmQhWI" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 63932) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6Im51cnNlIiwibmFtZSI6Ik51cnNlIFNhcmEgTW9oYW1lZCIsImV4cCI6MTc4MjUxNjcyMn0.28IP2_7Sx0gRAQKxqmotpJ9OTKuaPm7UfK6zSLmQhWI" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 49979) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6Im51cnNlIiwibmFtZSI6Ik51cnNlIFNhcmEgTW9oYW1lZCIsImV4cCI6MTc4MjUxNjcyMn0.28IP2_7Sx0gRAQKxqmotpJ9OTKuaPm7UfK6zSLmQhWI" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 65242) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6Im51cnNlIiwibmFtZSI6Ik51cnNlIFNhcmEgTW9oYW1lZCIsImV4cCI6MTc4MjUxNjcyMn0.28IP2_7Sx0gRAQKxqmotpJ9OTKuaPm7UfK6zSLmQhWI" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     ('127.0.0.1', 49784) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6Im51cnNlIiwibmFtZSI6Ik51cnNlIFNhcmEgTW9oYW1lZCIsImV4cCI6MTc4MjUxNjcyMn0.28IP2_7Sx0gRAQKxqmotpJ9OTKuaPm7UfK6zSLmQhWI" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 56830) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwicm9sZSI6ImFkbWluIiwibmFtZSI6IkFkbWluIE9tYXIgTm91ciIsImV4cCI6MTc4MjUxNjc0N30.b7hUqsh2dKirUIUWote4Bh-W_56tVSehIxG4EkJIbcs" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 57727) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwicm9sZSI6ImFkbWluIiwibmFtZSI6IkFkbWluIE9tYXIgTm91ciIsImV4cCI6MTc4MjUxNjc0N30.b7hUqsh2dKirUIUWote4Bh-W_56tVSehIxG4EkJIbcs" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 56990) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwicm9sZSI6ImFkbWluIiwibmFtZSI6IkFkbWluIE9tYXIgTm91ciIsImV4cCI6MTc4MjUxNjc0N30.b7hUqsh2dKirUIUWote4Bh-W_56tVSehIxG4EkJIbcs" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 62688) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwicm9sZSI6ImFkbWluIiwibmFtZSI6IkFkbWluIE9tYXIgTm91ciIsImV4cCI6MTc4MjUxNjc0N30.b7hUqsh2dKirUIUWote4Bh-W_56tVSehIxG4EkJIbcs" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 49331) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwicm9sZSI6ImFkbWluIiwibmFtZSI6IkFkbWluIE9tYXIgTm91ciIsImV4cCI6MTc4MjUxNjc0N30.b7hUqsh2dKirUIUWote4Bh-W_56tVSehIxG4EkJIbcs" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 55432) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwicm9sZSI6ImFkbWluIiwibmFtZSI6IkFkbWluIE9tYXIgTm91ciIsImV4cCI6MTc4MjUxNjc0N30.b7hUqsh2dKirUIUWote4Bh-W_56tVSehIxG4EkJIbcs" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     ('127.0.0.1', 62890) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2NzgyfQ.-7pAspHmZHv5pyxHm37TgIp9q24V7EmU36IQNN0uC_A" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 50843) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2NzgyfQ.-7pAspHmZHv5pyxHm37TgIp9q24V7EmU36IQNN0uC_A" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 55954) - "WebSocket /api/chat/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2NzgyfQ.-7pAspHmZHv5pyxHm37TgIp9q24V7EmU36IQNN0uC_A" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 59682) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2NzgyfQ.-7pAspHmZHv5pyxHm37TgIp9q24V7EmU36IQNN0uC_A" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     ('127.0.0.1', 53053) - "WebSocket /api/ws/alerts?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImRvY3RvciIsIm5hbWUiOiJEci4gQWhtZWQgSGFzc2FuIiwiZXhwIjoxNzgyNTE2NzgyfQ.-7pAspHmZHv5pyxHm37TgIp9q24V7EmU36IQNN0uC_A" [accepted]
+INFO:     connection open
+INFO:     connection closed
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+ALERT [arrhythmia] patient=1037 severity=medium id=3
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not delete fall detection session sandbox_1037: Client error '404 Not Found' for url 'http://localhost:8002/sessions/sandbox_1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Could not stop seizure session 1037: Client error '404 Not Found' for url 'http://localhost:8003/sessions/1037'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+INFO:     ('127.0.0.1', 52106) - "WebSocket /api/ws/camera/sandbox_1037" [accepted]
+INFO:     connection open
+INFO:     connection closed
+Camera bridge error for room sandbox_1037: no close frame received or sent
+INFO:     connection closed
+Seizure WebSocket disconnected for session 1037: received 1012 (service restart); then sent 1012 (service restart)
+Camera bridge error for room sandbox_1037: received 1012 (service restart); then sent 1012 (service restart)
+Camera bridge error for room sandbox_1037: received 1012 (service restart); then sent 1012 (service restart)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [22824]
