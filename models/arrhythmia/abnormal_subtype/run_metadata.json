@@ -1,0 +1,30 @@
+{
+  "task": "abnormal_only_all_datasets_4class",
+  "label_mapping": {
+    "AF": [
+      "AF"
+    ],
+    "IAVB": [
+      "IAVB"
+    ],
+    "SB": [
+      "SB"
+    ],
+    "STach": [
+      "STach"
+    ]
+  },
+  "n_parameters": 1121188,
+  "device": "cuda",
+  "datasets": [
+    "ptbxl",
+    "cinc2020",
+    "code15"
+  ],
+  "class_names": [
+    "AF",
+    "IAVB",
+    "SB",
+    "STach"
+  ]
+}

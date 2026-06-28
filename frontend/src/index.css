@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --scrollbar-thumb: #627d98;
+    --scrollbar-track: #d9e2ec;
+  }
+
+  html { font-size: 15px; }
+
+  body {
+    @apply font-sans text-navy-900 bg-navy-50;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Thin, on-brand scrollbars for Chrome/Edge/Safari */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+  /* Visible focus ring — accessibility requirement */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-teal-600 rounded-sm;
+  }
+}
+
+@layer components {
+  /* Shared card surface */
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-navy-100;
+  }
+
+  /* Severity badge pill */
+  .severity-critical { @apply bg-red-100 text-red-700 border-red-200; }
+  .severity-high     { @apply bg-orange-100 text-orange-700 border-orange-200; }
+  .severity-medium   { @apply bg-amber-100 text-amber-700 border-amber-200; }
+  .severity-low      { @apply bg-blue-100 text-blue-700 border-blue-200; }
+  .severity-ok       { @apply bg-green-100 text-green-700 border-green-200; }
+
+  /* Pulsing dot for live / unacknowledged alerts */
+  .pulse-dot {
+    @apply w-2 h-2 rounded-full bg-red-500 animate-pulse-slow;
+  }
+
+  /* Chat bubble base styles */
+  .bubble-bot {
+    @apply bg-white border border-navy-100 rounded-2xl rounded-tl-sm shadow-card;
+  }
+  .bubble-user {
+    @apply bg-navy-800 text-white rounded-2xl rounded-tr-sm;
+  }
+
+  /* Thinking block */
+  .think-block {
+    @apply bg-navy-50 border border-teal-200 rounded-xl p-4 my-2
+           border-l-4 border-l-teal-600 text-navy-600 text-sm font-mono;
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg
+           text-navy-200 hover:text-white hover:bg-navy-700
+           transition-colors duration-150 cursor-pointer font-medium text-sm;
+  }
+  .nav-item.active {
+    @apply bg-teal-600/20 text-teal-300 hover:bg-teal-600/30 hover:text-teal-200;
+  }
+}
+
+.font-dejavu {
+  font-family: 'DejaVu Sans', sans-serif;
+}

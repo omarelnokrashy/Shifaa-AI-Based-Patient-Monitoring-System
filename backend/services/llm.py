@@ -451,7 +451,7 @@ def generate_answer_with_image(
     except Exception as e:
         import time
         import traceback
-        log_dir = Path("logs")
+        log_dir = Path(__file__).resolve().parent.parent.parent / "runtime" / "logs" / "backend"
         log_dir.mkdir(exist_ok=True)
         log_path = log_dir / "multimodal_error.log"
         with log_path.open("a", encoding="utf-8") as f:

@@ -1,0 +1,25 @@
+{
+  "task": "binary_all_datasets_normal_vs_abnormal",
+  "label_mapping": {
+    "Normal": [
+      "NSR"
+    ],
+    "Abnormal": [
+      "AF",
+      "IAVB",
+      "SB",
+      "STach"
+    ]
+  },
+  "n_parameters": 1120930,
+  "device": "cuda",
+  "datasets": [
+    "ptbxl",
+    "cinc2020",
+    "code15"
+  ],
+  "class_names": [
+    "Normal",
+    "Abnormal"
+  ]
+}

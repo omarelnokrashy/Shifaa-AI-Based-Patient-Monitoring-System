@@ -1,0 +1,26 @@
+{
+  "train": {
+    "n_samples": 158391,
+    "class_counts": {
+      "Normal": 130634,
+      "Abnormal": 27757
+    },
+    "n_groups": 119633
+  },
+  "val": {
+    "n_samples": 19775,
+    "class_counts": {
+      "Normal": 16328,
+      "Abnormal": 3447
+    },
+    "n_groups": 14954
+  },
+  "test": {
+    "n_samples": 19805,
+    "class_counts": {
+      "Normal": 16331,
+      "Abnormal": 3474
+    },
+    "n_groups": 14955
+  }
+}

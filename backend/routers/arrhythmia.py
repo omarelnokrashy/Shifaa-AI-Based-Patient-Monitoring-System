@@ -177,8 +177,8 @@ def get_arrhythmia_history(
 import os
 import wfdb
 import scipy.signal
-
-ECG_DIR = "F:/GP/Deployment/Medical-History-Chatbot/uploads/ECG_Signals"
+from pathlib import Path
+ECG_DIR = str(Path(__file__).resolve().parent.parent.parent / "uploads" / "ECG_Signals")
 
 @router.get("/sandbox/signals")
 async def get_sandbox_signals(current_user: models.User = Depends(_clinical)):
