@@ -1,0 +1,13 @@
+# Sealed C++ runtime configuration.
+# These are the only keys read by runtime/src/full_runtime.cpp.
+pose_onnx_path: ../../models/seizure/pose.onnx
+pose_normalization: imagenet
+vsvig_onnx_path: ../../models/seizure/vsvig_protogcn.onnx
+cj_head_onnx_path: ../../models/seizure/cj_final.onnx
+vsvig_sample_fps: 6.0
+inference_stride: 15
+warmup_runs: 3
+
+# Python ViViT sidecar defaults live in runtime/vivit_ipc_server.py:
+# pose weights model_weights/pose.pth, ViViT google/vivit-b-16x2-kinetics400,
+# sample_fps 6.0, fixed slide_sec 5.0.
