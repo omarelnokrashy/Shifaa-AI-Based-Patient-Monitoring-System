@@ -24,7 +24,7 @@ Developed as a graduation project at **Ain Shams University, Faculty of Computer
 ## 🗺️ System Architecture
 
 
-![System Architecture](uploads/Architectures/System_Architecture.png)
+<img src="uploads/Architectures/System_Architecture.png" alt="System Architecture" width="100%" />
 
 ---
 
