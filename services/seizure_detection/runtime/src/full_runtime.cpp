@@ -616,6 +616,7 @@ int run_vsvig_openpose_native(const Args& args) {
         double active_time_sec = 0.0;
         double total_cj_ms = 0.0;
         int count_cj = 0;
+        bool reset_requested = false;
     };
     auto cj_result = std::make_shared<CjIpcResult>();
     auto stop_ipc = std::make_shared<std::atomic<bool>>(false);
@@ -669,6 +670,11 @@ int run_vsvig_openpose_native(const Args& args) {
                     DWORD bytesRead = 0;
                     BOOL success = ReadFile(hPipe, &payload, sizeof(payload), &bytesRead, NULL);
                     if (!success || bytesRead != sizeof(payload)) break;
+                    if (strncmp(payload.magic, "RSET", 4) == 0) {
+                        std::lock_guard<std::mutex> lock(cj_result->mtx);
+                        cj_result->reset_requested = true;
+                        continue;
+                    }
                     if (strncmp(payload.magic, "VIVT", 4) != 0) break;
                     
                     std::vector<int64_t> tokens_shape = {1, 14, 768};
@@ -859,6 +865,18 @@ int run_vsvig_openpose_native(const Args& args) {
                     << age_sec << ","
                     << sample.prob << "\n";
             }
+        }
+
+        bool do_reset = false;
+        {
+            std::lock_guard<std::mutex> lock(cj_result->mtx);
+            if (cj_result->reset_requested) {
+                do_reset = true;
+                cj_result->reset_requested = false;
+            }
+        }
+        if (do_reset) {
+            gate.reset();
         }
 
         auto t0_gate = std::chrono::high_resolution_clock::now();

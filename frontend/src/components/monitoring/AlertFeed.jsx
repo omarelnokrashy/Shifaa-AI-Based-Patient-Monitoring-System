@@ -21,7 +21,7 @@ import useAlertsStore from '../../store/alertsStore'
  *                                            receiving `(alertId: number)` as argument.
  * @returns {JSX.Element}
  */
-export default function AlertFeed({ alerts = [], mode = 'active', highlightId, onAcknowledge }) {
+export default function AlertFeed({ alerts = [], mode = 'active', highlightId, highlightIsAck, onAcknowledge }) {
   const navigate = useNavigate()
   const user     = useAuthStore((s) => s.user)
   const ackStore = useAlertsStore((s) => s.acknowledge)
@@ -78,7 +78,7 @@ export default function AlertFeed({ alerts = [], mode = 'active', highlightId, o
    */
   const goToPatient = (alert) => {
     const prefix = user?.role === 'nurse' ? '/nurse' : '/doctor'
-    navigate(`${prefix}/patients/${alert.patient_id}?highlightAlert=${alert.id}`)
+    navigate(`${prefix}/patients/${alert.patient_id}?highlightAlert=${alert.id}&isAck=${alert.acknowledged}`)
   }
 
   const handleExport = (e, alert) => {
@@ -96,8 +96,16 @@ export default function AlertFeed({ alerts = [], mode = 'active', highlightId, o
     )
   }
 
-  const isHighlighted = (alert) => Number(alert.id) === Number(highlightId)
-  const showSeverityAccent = (alert) => mode !== 'history' && !isHighlighted(alert) && !alert.acknowledged
+  const isHighlighted = (alert) => {
+    if (!highlightId) return false
+    const idMatch = Number(alert.id) === Number(highlightId)
+    if (highlightIsAck !== null && highlightIsAck !== undefined && highlightIsAck !== '') {
+      const expectedAck = highlightIsAck === 'true'
+      return idMatch && alert.acknowledged === expectedAck
+    }
+    return idMatch && !alert.acknowledged
+  }
+  const showSeverityAccent = (alert) => !alert.acknowledged
 
   return (
     <div className="space-y-2">
@@ -105,11 +113,12 @@ export default function AlertFeed({ alerts = [], mode = 'active', highlightId, o
         <div
           id={`alert-card-${alert.id}`}
           key={alert.id}
-          onClick={() => goToPatient(alert)}
+          onClick={mode === 'history' ? undefined : () => goToPatient(alert)}
           aria-current={isHighlighted(alert) ? 'true' : undefined}
           className={clsx(
-            'flex items-start gap-3 p-3 rounded-xl border cursor-pointer',
-            'transition-all duration-150 hover:shadow-md hover:-translate-y-0.5',
+            'flex items-start gap-3 p-3 rounded-xl border',
+            mode !== 'history' && 'cursor-pointer hover:shadow-md hover:-translate-y-0.5',
+            'transition-all duration-150',
             isHighlighted(alert)
               ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-sm'
               : alert.acknowledged && mode !== 'history'
@@ -161,26 +170,26 @@ export default function AlertFeed({ alerts = [], mode = 'active', highlightId, o
             )}
           </div>
 
-          {mode !== 'history' && (
-            <div className="flex items-center gap-1 shrink-0">
-              {!alert.acknowledged && (
-                <button
-                  onClick={(e) => handleAck(e, alert)}
-                  title="Acknowledge"
-                  className="p-1.5 rounded-lg hover:bg-green-50 text-navy-400 hover:text-green-600 transition-colors"
-                >
-                  <CheckCheck size={15} />
-                </button>
-              )}
-              {!alert.acknowledged && (
-                <button
-                  onClick={(e) => handleCancel(e, alert)}
-                  title="Cancel"
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-navy-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 size={15} />
-                </button>
-              )}
+          <div className="flex items-center gap-1 shrink-0">
+            {!alert.acknowledged && (
+              <button
+                onClick={(e) => handleAck(e, alert)}
+                title="Acknowledge"
+                className="p-1.5 rounded-lg hover:bg-green-50 text-navy-400 hover:text-green-600 transition-colors"
+              >
+                <CheckCheck size={15} />
+              </button>
+            )}
+            {!alert.acknowledged && (
+              <button
+                onClick={(e) => handleCancel(e, alert)}
+                title="Cancel"
+                className="p-1.5 rounded-lg hover:bg-red-50 text-navy-400 hover:text-red-600 transition-colors"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+            {mode !== 'history' && (
               <button
                 onClick={(e) => handleExport(e, alert)}
                 title="Export"
@@ -188,8 +197,8 @@ export default function AlertFeed({ alerts = [], mode = 'active', highlightId, o
               >
                 <ExternalLink size={15} />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       ))}
     </div>

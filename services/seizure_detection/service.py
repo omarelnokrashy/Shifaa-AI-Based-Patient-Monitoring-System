@@ -120,6 +120,7 @@ class SeizureSession:
         self.last_event: Optional[dict] = None
         self.ready        = False
         self.latch_override = False
+        self.latch_start_time = None
         
         self.cpp_stdout_file = None
         self.cpp_stderr_file = None
@@ -283,6 +284,19 @@ class SeizureSession:
             count_vivit = 0
             
             while not self._stop_event.is_set():
+                if getattr(self, "trigger_reset", False):
+                    self.trigger_reset = False
+                    import struct
+                    payload = struct.pack("4s d d d", b"RSET", 0.0, 0.0, 0.0)
+                    payload += b"\x00" * (14 * 768 * 4)  # tokens
+                    payload += b"\x00" * (14 * 30 * 3 * 4)  # pos
+                    try:
+                        pipe.write(payload)
+                        pipe.flush()
+                        session_log("Wrote RSET command to pipe")
+                    except Exception as e:
+                        session_log(f"Pipe reset write failed: {e}")
+
                 ok, frame = cap.read()
                 if not ok:
                     break
@@ -425,6 +439,14 @@ class SeizureSession:
                     if event.get("status") != "INITIALISING":
                         self.ready = True
                     event["ready"] = self.ready
+
+                    if event.get("alert_latched"):
+                        if not self.latch_start_time:
+                            self.latch_start_time = event.get("time_sec") or time.time()
+                    else:
+                        self.latch_start_time = None
+                    event["latch_start_time"] = self.latch_start_time
+
                     self.last_event = event
                     asyncio.run_coroutine_threadsafe(
                         self._broadcast(event), _event_loop
@@ -579,6 +601,8 @@ def reset_seizure_latch(session_id: str):
         raise HTTPException(status_code=404, detail="Session not found")
     session = _sessions[session_id]
     session.latch_override = True
+    session.trigger_reset = True
+    session.latch_start_time = None
     log.info(f"Seizure latch override enabled for session={session_id}")
     return {"status": "success", "session_id": session_id}
 

@@ -99,7 +99,7 @@ export default function SandboxTestPage() {
           addLog('Seizure Svc', `⚠️ Seizure active! Signal: ${matchingEvent.gate_score?.toFixed(3)}`, 'danger')
         }
 
-        if (prevStatus !== 'SEIZURE') {
+        if (prevStatus !== 'SEIZURE' || !seizureLatchActive) {
           useAlertsStore.getState().playAlarmSound()
           setSeizureLatchActive(true)
           setSeizureLatchRemaining(30.0)
@@ -107,7 +107,10 @@ export default function SandboxTestPage() {
           if (isLive) {
             http.post('/api/monitoring/seizure/trigger-alert', {
               patient_id: Number(selectedPatientId),
-              details: matchingEvent
+              details: {
+                ...matchingEvent,
+                latch_start_time: seizureLatchStartRef.current || Date.now()
+              }
             }).catch(err => {
               console.error("Failed to trigger playhead seizure alert:", err)
             })

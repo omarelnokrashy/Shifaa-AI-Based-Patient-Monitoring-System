@@ -29,12 +29,7 @@ class PatientBase(BaseModel):
     blood_type: Optional[str]
     phone: Optional[str]
 
-class PatientOut(PatientBase):
-    """Patient record returned by the API, including the database-assigned ``id``."""
-    id: int
-    created_at: Optional[datetime]
-    class Config:
-        from_attributes = True
+
 
 # ----- Medical data -----
 class DiagnosisOut(BaseModel):
@@ -102,6 +97,15 @@ class AlertOut(BaseModel):
     acknowledged: bool = False
     patient_name: Optional[str] = None
     alert_id: Optional[int] = None
+    class Config:
+        from_attributes = True
+
+class PatientOut(PatientBase):
+    """Patient record returned by the API, including the database-assigned ``id``."""
+    id: int
+    created_at: Optional[datetime]
+    diagnoses: Optional[List[DiagnosisOut]] = []
+    alerts: Optional[List[AlertOut]] = []
     class Config:
         from_attributes = True
 

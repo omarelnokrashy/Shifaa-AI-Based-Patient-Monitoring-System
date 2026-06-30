@@ -110,9 +110,8 @@ export default function PatientListPage() {
  * @returns {JSX.Element}
  */
 function PatientRow({ patient, onClick }) {
-  const abnormalLabs = (patient.lab_results || []).filter((l) => l.is_abnormal).length
   const activeDxCount = (patient.diagnoses || []).filter((d) => d.is_active).length
-  const hasAllergy = (patient.allergies || []).length > 0
+  const activeAlertsCount = (patient.alerts || []).length
 
   return (
     <tr
@@ -145,15 +144,13 @@ function PatientRow({ patient, onClick }) {
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          {abnormalLabs > 0 && (
-            <span className="text-amber-600 text-xs flex items-center gap-1">
-              <AlertCircle size={12} /> {abnormalLabs} abnormal lab{abnormalLabs > 1 ? 's' : ''}
+          {activeAlertsCount > 0 ? (
+            <span className="text-red-600 font-semibold flex items-center gap-1">
+              <AlertCircle size={14} className="animate-pulse" /> {activeAlertsCount} Active
             </span>
+          ) : (
+            <span className="text-green-600 text-xs font-medium">✓ Clear</span>
           )}
-          {hasAllergy && (
-            <span className="text-red-600 text-xs font-semibold">⚠ Allergy</span>
-          )}
-          {!abnormalLabs && !hasAllergy && <span className="text-green-600 text-xs">✓ Clear</span>}
         </div>
       </td>
       <td className="px-4 py-3 text-right">

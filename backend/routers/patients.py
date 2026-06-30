@@ -15,7 +15,7 @@ GET    /api/patients/{patient_id}/diagnoses   — diagnosis history
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from ..database import get_db
 from ..auth import get_current_doctor
@@ -34,7 +34,10 @@ def list_patients(
     doctor                    = Depends(get_current_doctor)
 ):
     """Search and filter patients. Supports name search, gender, and blood_type filters."""
-    q = db.query(models.Patient)
+    q = db.query(models.Patient).options(
+        selectinload(models.Patient.diagnoses),
+        selectinload(models.Patient.alerts)
+    )
     if doctor.role in (models.UserRole.doctor, models.UserRole.nurse):
         q = q.join(models.PatientAssignment).filter(models.PatientAssignment.user_id == doctor.id).distinct()
 

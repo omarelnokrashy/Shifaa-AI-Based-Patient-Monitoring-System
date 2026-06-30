@@ -191,6 +191,17 @@ async def stream_with_thinking(websocket: WebSocket, generator):
     if in_think:
         duration = round(time.time() - think_start, 1) if think_start else 0
         await websocket.send_json({"type": "think_done", "duration": duration})
+        in_think = False
+
+    # Safety net: if the entire response was captured as thinking, copy it to the answer channel
+    if not answer_buf.strip() and think_buf.strip():
+        answer_buf = think_buf
+        await websocket.send_json({"type": "chunk", "chunk": answer_buf, "done": False})
+
+    # Fallback safety net: if the final response is still empty, output a helpful clinical note instead of a blank bubble
+    if not answer_buf.strip():
+        answer_buf = "I reviewed the patient's records, but I was unable to compile a clinical response for this query. Please check if the patient has active records loaded or refine your query."
+        await websocket.send_json({"type": "chunk", "chunk": answer_buf, "done": False})
 
     return answer_buf, think_buf
 

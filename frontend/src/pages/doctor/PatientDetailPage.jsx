@@ -40,6 +40,7 @@ export default function PatientDetailPage() {
   const location   = useLocation()
   const queryParams = new URLSearchParams(location.search)
   const highlightAlertId = queryParams.get('highlightAlert')
+  const highlightAlertAck = queryParams.get('isAck')
 
   const [tab, setTab]         = useState(highlightAlertId ? 'monitoring' : 'overview')
   const [patient, setPatient] = useState(null)
@@ -123,7 +124,7 @@ export default function PatientDetailPage() {
           <ChatPanel patient={patient} />
         </div>
       )}
-      {tab === 'monitoring' && <MonitoringTab patient={patient} alerts={alerts} highlightId={highlightAlertId} />}
+      {tab === 'monitoring' && <MonitoringTab patient={patient} alerts={alerts} highlightId={highlightAlertId} highlightIsAck={highlightAlertAck} />}
     </div>
   )
 }
@@ -233,39 +234,19 @@ function OverviewTab({ patient }) {
 }
 
 // ── Monitoring tab ────────────────────────────────────────────────────────────
-/**
- * Renders the full alert history for the patient inside a labelled card.
- *
- * @param {object}   props
- * @param {object}   props.patient - Patient object (used for the card subtitle).
- * @param {object[]} props.alerts  - Array of alert objects to display in the feed.
- * @returns {JSX.Element}
- */
-function MonitoringTab({ patient, alerts, highlightId }) {
+function MonitoringTab({ patient, alerts, highlightId, highlightIsAck }) {
   return (
     <Card>
       <CardHeader title="Monitoring History" subtitle={`Alerts for ${patient.name}`} icon={Activity} />
-      <AlertFeed alerts={alerts} mode="history" highlightId={highlightId} />
+      <AlertFeed alerts={alerts} mode="history" highlightId={highlightId} highlightIsAck={highlightIsAck} />
     </Card>
   )
 }
 
-/**
- * Generic empty-state message used inside tab cards when a list has no items.
- *
- * @param {object} props
- * @param {string} props.text - The message to display.
- * @returns {JSX.Element}
- */
 function EmptyState({ text }) {
   return <p className="text-navy-400 text-sm py-2">{text}</p>
 }
 
-/**
- * Full-page animated skeleton shown while the patient data is loading.
- *
- * @returns {JSX.Element}
- */
 function LoadingState() {
   return (
     <div className="space-y-4 max-w-6xl mx-auto animate-pulse">
@@ -277,4 +258,3 @@ function LoadingState() {
     </div>
   )
 }
-

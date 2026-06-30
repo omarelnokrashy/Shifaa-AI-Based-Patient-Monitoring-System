@@ -84,6 +84,34 @@ class AlertManager:
         -------
         The saved Alert ORM object.
         """
+        # Prevent duplicate alerts if they belong to the exact same latch event cycle
+        new_latch_start = details.get("latch_start_time")
+        if new_latch_start is not None:
+            duplicate = db.query(models.Alert).filter(
+                models.Alert.patient_id == patient_id,
+                models.Alert.alert_type == alert_type,
+                models.Alert.status == "ACTIVE"
+            ).order_by(models.Alert.created_at.desc()).first()
+
+            if duplicate:
+                old_latch_start = duplicate.details.get("latch_start_time") if isinstance(duplicate.details, dict) else None
+                if old_latch_start == new_latch_start:
+                    log.info(f"Skipping duplicate alert [{alert_type}] for patient {patient_id} (same latch cycle).")
+                    return duplicate
+        else:
+            # Fallback 30-second cooldown for non-latched alerts
+            cooldown_limit = datetime.utcnow() - timedelta(seconds=30)
+            duplicate = db.query(models.Alert).filter(
+                models.Alert.patient_id == patient_id,
+                models.Alert.alert_type == alert_type,
+                models.Alert.status == "ACTIVE",
+                models.Alert.created_at >= cooldown_limit
+            ).first()
+
+            if duplicate:
+                log.info(f"Skipping duplicate alert [{alert_type}] for patient {patient_id} within cooldown.")
+                return duplicate
+
         alert = models.Alert(
             patient_id      = patient_id,
             alert_type      = alert_type,

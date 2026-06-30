@@ -434,7 +434,7 @@ async def ws_camera(websocket: WebSocket, room_id: str):
 
             async def relay_from_fall():
                 """Receive fall events ← fall service, forward to camera client + alert subscribers."""
-                last_fall_detected = False
+                last_latch_active = False
                 async for msg in fall_ws:
                     try:
                         event = json.loads(msg)
@@ -447,9 +447,9 @@ async def ws_camera(websocket: WebSocket, room_id: str):
                     except Exception:
                         pass
 
-                    # If it's a fall, create a DB alert and broadcast to all subscribers
-                    current_fall_detected = event.get("fall_detected", False)
-                    if current_fall_detected and not last_fall_detected:
+                    # If it's a fall latch activation, create a DB alert and broadcast to all subscribers
+                    current_latch_active = event.get("latch_active", False)
+                    if current_latch_active and not last_latch_active:
                         from ..database import SessionLocal
                         db = SessionLocal()
                         try:
@@ -466,7 +466,7 @@ async def ws_camera(websocket: WebSocket, room_id: str):
                             log.error(f"Failed to save fall alert: {exc}")
                         finally:
                             db.close()
-                    last_fall_detected = current_fall_detected
+                    last_latch_active = current_latch_active
 
             # Run both relay coroutines concurrently
             await asyncio.gather(relay_to_fall(), relay_from_fall())
@@ -489,7 +489,7 @@ async def _seizure_event_relay(session_id: str, patient_id: int, is_video: bool 
     Subscribes to the seizure service WebSocket and creates DB alerts
     whenever a SEIZURE status is first detected (not on every frame).
     """
-    last_status = "INITIALISING"
+    last_latch_active = False
 
     async def on_event(event: dict):
         """
@@ -498,8 +498,9 @@ async def _seizure_event_relay(session_id: str, patient_id: int, is_video: bool 
         subscribers only on the first frame that transitions into SEIZURE status,
         avoiding alert storms for sustained seizure episodes.
         """
-        nonlocal last_status
+        nonlocal last_latch_active
         current_status = event.get("status", "NORMAL")
+        current_latch_active = event.get("alert_latched", False)
 
         # Sync room status dynamically based on current_status
         from ..database import SessionLocal
@@ -523,8 +524,8 @@ async def _seizure_event_relay(session_id: str, patient_id: int, is_video: bool 
         finally:
             db_session.close()
 
-        # Only fire an alert on the transition into SEIZURE
-        if current_status == "SEIZURE" and last_status != "SEIZURE":
+        # Only fire an alert on the transition into SEIZURE latch
+        if current_latch_active and not last_latch_active:
             if not is_video:
                 from ..database import SessionLocal
                 db = SessionLocal()
@@ -541,6 +542,6 @@ async def _seizure_event_relay(session_id: str, patient_id: int, is_video: bool 
                 finally:
                     db.close()
 
-        last_status = current_status
+        last_latch_active = current_latch_active
 
     await seizure_detection_client.subscribe_and_forward(session_id, on_event)

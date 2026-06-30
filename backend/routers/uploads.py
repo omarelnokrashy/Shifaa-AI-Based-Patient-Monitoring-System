@@ -122,6 +122,7 @@ async def analyze_image(
             in_think       = False
             format_decided = False
             answer_buf     = ""
+            think_buf      = ""
             raw_buffer     = ""
             think_start    = None
 
@@ -149,6 +150,7 @@ async def analyze_image(
                             remainder = remainder[len("thought"):]
                         remainder = remainder.lstrip(": \n\r")
                         if remainder:
+                            think_buf += remainder
                             yield f"data: {json.dumps({'type': 'think', 'chunk': remainder})}\n\n"
                         raw_buffer = ""
                         continue
@@ -175,6 +177,7 @@ async def analyze_image(
                         think_start = time.time()
                         yield f"data: {json.dumps({'type': 'think_start'})}\n\n"
                         if remainder:
+                            think_buf += remainder
                             yield f"data: {json.dumps({'type': 'think', 'chunk': remainder})}\n\n"
                         raw_buffer = ""
                         continue
@@ -203,6 +206,7 @@ async def analyze_image(
                 if close_tag:
                     think_chunk, raw_buffer = raw_buffer.split(close_tag, 1)
                     if think_chunk:
+                        think_buf += think_chunk
                         yield f"data: {json.dumps({'type': 'think', 'chunk': think_chunk})}\n\n"
                     duration = round(time.time() - think_start, 1) if think_start else 0
                     yield f"data: {json.dumps({'type': 'think_done', 'duration': duration})}\n\n"
@@ -225,6 +229,7 @@ async def analyze_image(
 
                 # ── Normal streaming ──────────────────────────────────────────────────
                 if in_think:
+                    think_buf += raw_buffer
                     yield f"data: {json.dumps({'type': 'think', 'chunk': raw_buffer})}\n\n"
                 else:
                     answer_buf += raw_buffer
@@ -234,6 +239,7 @@ async def analyze_image(
             # Flush remainder
             if raw_buffer:
                 if in_think:
+                    think_buf += raw_buffer
                     yield f"data: {json.dumps({'type': 'think', 'chunk': raw_buffer})}\n\n"
                 else:
                     answer_buf += raw_buffer
@@ -242,6 +248,17 @@ async def analyze_image(
             if in_think:
                 duration = round(time.time() - think_start, 1) if think_start else 0
                 yield f"data: {json.dumps({'type': 'think_done', 'duration': duration})}\n\n"
+                in_think = False
+
+            # Safety net: if the entire response was captured as thinking, copy it to the answer channel
+            if not answer_buf.strip() and think_buf.strip():
+                answer_buf = think_buf
+                yield f"data: {json.dumps({'type': 'chunk', 'chunk': answer_buf, 'done': False})}\n\n"
+
+            # Fallback safety net: if the final response is still empty, output a helpful clinical note instead of a blank bubble
+            if not answer_buf.strip():
+                answer_buf = "I was unable to analyze the uploaded image or compile a clinical response. Please ensure the image is clear and try again."
+                yield f"data: {json.dumps({'type': 'chunk', 'chunk': answer_buf, 'done': False})}\n\n"
 
             yield f"data: {json.dumps({'type': 'done', 'chunk': '', 'done': True})}\n\n"
 
