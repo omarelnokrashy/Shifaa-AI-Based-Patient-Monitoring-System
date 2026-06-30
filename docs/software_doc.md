@@ -12,7 +12,7 @@ Source-of-truth policy: this document was reverse-engineered from active source 
 
 ## Executive Source Map
 
-The repository implements a multi-service hospital monitoring platform. The main backend is a FastAPI application in `backend/main.py` with SQLAlchemy models in `backend/models.py`. The user interface is a Vite React application under `frontend-react/src`. Three inference services are embedded under `Repos`: arrhythmia detection in `Repos/Arrythmia-Detection-master/service.py`, fall detection in `Repos/Patient-fall-detection-system-main/service.py`, and seizure detection in `Repos/seizure_detection/service.py`. The seizure pipeline also contains a native C++ ONNX runtime under `Repos/seizure_detection/runtime`.
+The repository implements a multi-service hospital monitoring platform. The main backend is a FastAPI application in `backend/main.py` with SQLAlchemy models in `backend/models.py`. The user interface is a Vite React application under `frontend/src`. Three inference services are embedded under `services`: arrhythmia detection in `services/arrhythmia/service.py`, fall detection in `services/fall_detection/service.py`, and seizure detection in `services/seizure_detection/service.py`. The seizure pipeline also contains a native C++ ONNX runtime under `services/seizure_detection/runtime`.
 
 The system contains the following code-proven roles: `doctor`, `nurse`, and `admin`, defined by the `UserRole` enum in `backend/models.py` and enforced by `require_role` in `backend/auth.py`. Clinical alerts are typed as `arrhythmia`, `fall`, and `seizure`, and severities are typed as `low`, `medium`, `high`, and `critical`.
 
@@ -30,7 +30,7 @@ Manual clinical recording is error-prone when several rooms must be watched at o
 
 The problem addressed by the system is the continuous detection, persistence, and role-aware presentation of patient risk events in a hospital-room environment. The repository specifically addresses three signal classes: seizure-like motor manifestations in video, patient falls in room camera streams, and arrhythmia in 12-lead ECG signals. The central challenge is that these signals have different execution models. Seizure and fall detection are streaming workloads; arrhythmia detection is a request-response workload over a numeric ECG tensor.
 
-The seizure pipeline also introduces a hybrid synchronous/asynchronous problem. The C++ runtime processes OpenPose and VSViG ONNX inference in the frame loop, while a Python sidecar builds ViViT joint tokens and writes them to a Win32 named pipe. The C++ runtime must then combine a current VSViG risk with the most recently delivered Cross-Joint probability without letting stale side-channel output drive alerts. This is reflected in `CJ_MAX_AGE_SEC = 5.5`, `GATE_UPPER_BOUND = 0.50`, `GATE_LOWER_BOUND = 0.20`, and `GATE_ALPHA = 0.30` in `Repos/seizure_detection/runtime/include/seizure_gate.hpp`.
+The seizure pipeline also introduces a hybrid synchronous/asynchronous problem. The C++ runtime processes OpenPose and VSViG ONNX inference in the frame loop, while a Python sidecar builds ViViT joint tokens and writes them to a Win32 named pipe. The C++ runtime must then combine a current VSViG risk with the most recently delivered Cross-Joint probability without letting stale side-channel output drive alerts. This is reflected in `CJ_MAX_AGE_SEC = 5.5`, `GATE_UPPER_BOUND = 0.50`, `GATE_LOWER_BOUND = 0.20`, and `GATE_ALPHA = 0.30` in `services/seizure_detection/runtime/include/seizure_gate.hpp`.
 
 False alert minimization is also a problem explicitly handled by code. Fall detection requires the fall probability to exceed `FALL_THRESHOLD = 0.90` and to appear in at least two consecutive predictions before an alarm becomes active. Seizure detection uses a series gate and a temporal latch. Arrhythmia detection only persists an alert when the stage-1 ECG model returns `Abnormal`.
 
@@ -38,7 +38,7 @@ False alert minimization is also a problem explicitly handled by code. Fall dete
 
 The objective is to deliver a real-time hospital monitoring system that supports high-FPS edge inference, multiple monitoring services per room, secure staff interfaces, and persistent alert logging. The backend supports room services through `RoomService.service_name`, allowing each room to be configured with combinations such as `ecg`, `seizure`, and `fall`. Security is implemented by JWT-bearing requests and role-gated routers. Logging is implemented through active `Alert` records, permanent `AlertHistory` rows after acknowledgement, and service-specific CSV/runtime outputs for seizure monitoring.
 
-The measured seizure runtime artifact `Repos/seizure_detection/runtime_outputs/current_10_demo_clinical_summary_2026-06-19.json` records a mean steady processing throughput of `37.21352` FPS across ten videos. This supports the real-time objective for approximately 30 FPS video sources. The same artifact reports mean token-building latency of `217.2843` ms, mean ViViT latency of `52.8346` ms, and mean Cross-Joint ONNX latency of `2.1589` ms.
+The measured seizure runtime artifact `services/seizure_detection/runtime_outputs/current_10_demo_clinical_summary_2026-06-19.json` records a mean steady processing throughput of `37.21352` FPS across ten videos. This supports the real-time objective for approximately 30 FPS video sources. The same artifact reports mean token-building latency of `217.2843` ms, mean ViViT latency of `52.8346` ms, and mean Cross-Joint ONNX latency of `2.1589` ms.
 
 ## 1.4 Document Organization
 
@@ -48,7 +48,7 @@ Chapter 2 describes the scientific and systems background reflected in the imple
 
 ## 2.1 Skeleton-Based Human Pose Estimation
 
-The seizure runtime uses an OpenPose-style model exported to ONNX at `Repos/seizure_detection/model_weights/pose.onnx`. In C++, `preprocess_openpose_frame` resizes frames to height 256 and normalizes BGR pixel channels using either ImageNet normalization or OpenPose normalization. Keypoints are extracted by `extract_openpose_keypoints`, which reads heatmap outputs, resizes heatmaps to frame-relative dimensions, and selects the maximum response for each of 18 channels if the confidence exceeds `min_kpt_conf`, whose default is `0.1`.
+The seizure runtime uses an OpenPose-style model exported to ONNX at `models/seizure/pose.onnx`. In C++, `preprocess_openpose_frame` resizes frames to height 256 and normalizes BGR pixel channels using either ImageNet normalization or OpenPose normalization. Keypoints are extracted by `extract_openpose_keypoints`, which reads heatmap outputs, resizes heatmaps to frame-relative dimensions, and selects the maximum response for each of 18 channels if the confidence exceeds `min_kpt_conf`, whose default is `0.1`.
 
 The fall service uses MediaPipe Pose rather than OpenPose. It crops a YOLO-tracked person box, converts the crop to RGB, extracts pose landmarks, maps MediaPipe landmarks to an NTU-25 skeleton through `mediapipe_to_ntu25`, and appends a 25-joint, three-channel frame to a fixed 72-frame buffer.
 
@@ -60,11 +60,11 @@ The seizure detector combines a VSViG ONNX model and a ViViT/Cross-Joint branch.
 
 ## 2.3 Systems Background
 
-The seizure service uses a native and managed hybrid runtime. `Repos/seizure_detection/service.py` starts `seizure_runtime_cpp.exe` as a subprocess and starts an in-process Python token-producer thread for the same session. Communication between the two is performed through Win32 named pipes named as `\\.\pipe\seizure_vivit_tokens_{session_id}`. The binary packet begins with the magic header `VIVT`, followed by three `double` values (`time_sec`, `token_build_ms`, `vivit_ms`), followed by `14*768` float tokens and `14*30*3` float position values.
+The seizure service uses a native and managed hybrid runtime. `services/seizure_detection/service.py` starts `seizure_runtime_cpp.exe` as a subprocess and starts an in-process Python token-producer thread for the same session. Communication between the two is performed through Win32 named pipes named as `\\.\pipe\seizure_vivit_tokens_{session_id}`. The binary packet begins with the magic header `VIVT`, followed by three `double` values (`time_sec`, `token_build_ms`, `vivit_ms`), followed by `14*768` float tokens and `14*30*3` float position values.
 
 ONNX Runtime is used by the C++ runtime for OpenPose, VSViG, and the Cross-Joint head. The CMake file links ONNX Runtime and OpenCV libraries and copies CUDA and TensorRT provider DLLs, namely `onnxruntime_providers_cuda.dll` and `onnxruntime_providers_tensorrt.dll`, into the executable directory. The code sets graph optimization to `ORT_ENABLE_EXTENDED`.
 
-The web system uses FastAPI `0.111.0`, Uvicorn `0.30.1`, SQLAlchemy `2.0.30`, HTTPX `0.27.0`, and WebSockets `12.0` according to `requirements.txt`. The frontend uses React `^18.3.1`, Vite `^5.3.1`, Zustand `^4.5.2`, Recharts `^2.12.7`, Axios `^1.7.2`, and React Router DOM `^6.24.0` according to `frontend-react/package.json`.
+The web system uses FastAPI `0.111.0`, Uvicorn `0.30.1`, SQLAlchemy `2.0.30`, HTTPX `0.27.0`, and WebSockets `12.0` according to `requirements.txt`. The frontend uses React `^18.3.1`, Vite `^5.3.1`, Zustand `^4.5.2`, Recharts `^2.12.7`, Axios `^1.7.2`, and React Router DOM `^6.24.0` according to `frontend/package.json`.
 
 ## 2.4 Existing Systems and Limitations
 
@@ -76,16 +76,16 @@ Traditional monitoring systems often rely on threshold-based alarms, single-sign
 
 ## 3.1.1 System Architecture
 
-The system is a distributed clinical monitoring application composed of four primary layers. The first layer is the React frontend under `frontend-react/src`, which authenticates users, renders role-specific dashboards, opens the alert WebSocket, and invokes backend REST endpoints. The second layer is the FastAPI backend under `backend`, which manages authentication, RBAC, patient data, rooms, alerts, chat, uploads, and dashboard summaries. The third layer consists of inference microservices for arrhythmia, fall, and seizure. The fourth layer is the native seizure runtime, which performs C++ ONNX inference and receives ViViT/Cross-Joint tokens from Python through a named pipe.
+The system is a distributed clinical monitoring application composed of four primary layers. The first layer is the React frontend under `frontend/src`, which authenticates users, renders role-specific dashboards, opens the alert WebSocket, and invokes backend REST endpoints. The second layer is the FastAPI backend under `backend`, which manages authentication, RBAC, patient data, rooms, alerts, chat, uploads, and dashboard summaries. The third layer consists of inference microservices for arrhythmia, fall, and seizure. The fourth layer is the native seizure runtime, which performs C++ ONNX inference and receives ViViT/Cross-Joint tokens from Python through a named pipe.
 
 ```mermaid
 flowchart LR
-  Browser["React UI\nfrontend-react/src"] -->|Axios Bearer JWT| API["FastAPI Backend\nbackend/main.py"]
+  Browser["React UI\nfrontend/src"] -->|Axios Bearer JWT| API["FastAPI Backend\nbackend/main.py"]
   Browser -->|WS /api/ws/alerts?token=JWT| Alerts["AlertManager\nbackend/services/alert_manager.py"]
   API --> DB["SQLite via SQLAlchemy\nmedical_db.db"]
-  API -->|HTTP :8001| ECG["Arrhythmia Service\nRepos/Arrythmia-Detection-master/service.py"]
+  API -->|HTTP :8001| ECG["Arrhythmia Service\nservices/arrhythmia/service.py"]
   API -->|HTTP/WS :8002| Fall["Fall Service\nYOLO + MediaPipe + CTR-GCN"]
-  API -->|HTTP/WS :8003| SeizureSvc["Seizure Service\nRepos/seizure_detection/service.py"]
+  API -->|HTTP/WS :8003| SeizureSvc["Seizure Service\nservices/seizure_detection/service.py"]
   SeizureSvc --> CPP["seizure_runtime_cpp.exe\nOpenPose ONNX + VSViG ONNX + Gate"]
   SeizureSvc --> PyThread["Python token producer\nViViT + tubelet builder"]
   PyThread -->|Win32 named pipe VIVT packets| CPP
@@ -359,7 +359,7 @@ Series gate fusion is implemented by `series_gate`. If no Cross-Joint value exis
 
 Fall frame processing is implemented by `_process_frame` in the fall service. The function decodes a frame, runs YOLO person tracking, refreshes MobileNet role classification every 10 frames, extracts MediaPipe pose, maps to NTU-25, and runs CTR-GCN every 6 frames after a 72-frame buffer is full. A fall alarm requires probability at least `0.90` and two consecutive predictions before the latch is activated.
 
-Arrhythmia inference is implemented by `_run_predict` in `Repos/Arrythmia-Detection-master/service.py`. The input signal must have shape `(5000, 12)` and optional `qrs7` shape `(7,)`. The service first applies a binary Normal/Abnormal model. If the result is Abnormal, a second model classifies `AF`, `IAVB`, `SB`, or `STach`.
+Arrhythmia inference is implemented by `_run_predict` in `services/arrhythmia/service.py`. The input signal must have shape `(5000, 12)` and optional `qrs7` shape `(7,)`. The service first applies a binary Normal/Abnormal model. If the result is Abnormal, a second model classifies `AF`, `IAVB`, `SB`, or `STach`.
 
 ## 4.2 Techniques and Algorithms
 
@@ -382,7 +382,7 @@ The ECG cascade uses softmax over model logits. The first model returns probabil
 
 ONNX Runtime is used for native seizure inference, with OpenCV for video capture, image preprocessing, overlays, and output video writing. PyTorch is used by the fall service, the ECG service, and the seizure ViViT sidecar. FastAPI is used by all HTTP services, with WebSockets for streaming status and alerts. React is used for role-aware pages, React Router for route protection, Zustand for auth and alert state, Axios for HTTP, and Recharts for ECG visualization.
 
-## 4.4 Evaluation Results Found in Repository
+## 4.4 Evaluation Results Found in servicesitory
 
 The seizure segment metrics report AUROC `0.9669`, AUPRC `0.9429`, accuracy `0.9128`, F1 `0.9018`, precision `0.8319`, recall `0.9845`, and threshold `0.3081087228480716` across `952` segments. The ten-video clinical runtime summary reports `6` successes, `1` early false alert, `3` late alerts, `0` misses, mean LEO `5.86055` seconds, mean LCO `-3.93945` seconds, FAR `5.3 / hr`, and mean steady FPS `37.21352`.
 
@@ -408,9 +408,9 @@ For ECG testing, the backend exposes sandbox signal listing and signal retrieval
 
 Backend installation uses Python dependencies from `requirements.txt`. The core versions are FastAPI `0.111.0`, Uvicorn `0.30.1`, SQLAlchemy `2.0.30`, Pydantic `2.7.1`, Python-Jose `3.3.0`, Passlib bcrypt `1.7.4`, HTTPX `0.27.0`, WebSockets `12.0`, and Pandas `2.2.2`. The `.env` file must define at least `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and service URLs when non-default ports are used.
 
-Frontend installation uses `frontend-react/package.json`. Run `npm install`, then `npm run dev` for Vite development. Live mode requires `VITE_DATA_MODE=live`, `VITE_API_URL=http://localhost:8000`, and `VITE_WS_URL=ws://localhost:8000`. Otherwise, the UI uses mock data by default because `IS_MOCK` is defined as `import.meta.env.VITE_DATA_MODE !== 'live'`.
+Frontend installation uses `frontend/package.json`. Run `npm install`, then `npm run dev` for Vite development. Live mode requires `VITE_DATA_MODE=live`, `VITE_API_URL=http://localhost:8000`, and `VITE_WS_URL=ws://localhost:8000`. Otherwise, the UI uses mock data by default because `IS_MOCK` is defined as `import.meta.env.VITE_DATA_MODE !== 'live'`.
 
-The seizure C++ runtime is built from `Repos/seizure_detection/runtime/CMakeLists.txt`. The build requires CMake `3.16` or newer, C++17, ONNX Runtime under `Repos/seizure_detection/third_party/onnxruntime`, and OpenCV libraries under `Repos/seizure_detection/third_party/vcpkg_installed/x64-windows`. The build creates `seizure_gate_replay` and `seizure_runtime_cpp`. Provider DLLs for ONNX Runtime CUDA and TensorRT are copied after build.
+The seizure C++ runtime is built from `services/seizure_detection/runtime/CMakeLists.txt`. The build requires CMake `3.16` or newer, C++17, ONNX Runtime under `services/seizure_detection/third_party/onnxruntime`, and OpenCV libraries under `services/seizure_detection/third_party/vcpkg_installed/x64-windows`. The build creates `seizure_gate_replay` and `seizure_runtime_cpp`. Provider DLLs for ONNX Runtime CUDA and TensorRT are copied after build.
 
 Model checkpoints must be placed exactly at the paths used by code: seizure `model_weights/pose.onnx`, `model_weights/vsvig_protogcn.onnx`, `model_weights/cj_final.onnx`, and `model_weights/pose.pth`; fall `model_weights/patient_detection_yolov8n.pt`, `model_weights/role_classification_mobilenetv3_best.pt`, and `model_weights/fall_motion_ctrgcn_72f_impact.pt`; arrhythmia `models/binary_normal_abnormal/checkpoints/best.pt` and `models/abnormal_subtype/checkpoints/best.pt`.
 
@@ -444,7 +444,7 @@ Future work should migrate the backend database from SQLite to a production RDBM
 
 [7] FastAPI documentation and framework source, web API framework used by all Python services.
 
-[8] React, React Router, Zustand, Axios, and Recharts project documentation, frontend libraries used by `frontend-react/package.json`.
+[8] React, React Router, Zustand, Axios, and Recharts project documentation, frontend libraries used by `frontend/package.json`.
 
 ## BibTeX
 
@@ -487,4 +487,4 @@ Future work should migrate the backend database from SQLite to a production RDBM
 
 # Appendix A: Code Evidence Index
 
-Backend entry point: `backend/main.py`. Authentication and RBAC: `backend/auth.py`. Database schema: `backend/models.py`. Monitoring router: `backend/routers/monitoring.py`. Room router: `backend/routers/rooms.py`. Alert manager: `backend/services/alert_manager.py`. Seizure backend client: `backend/services/seizure_detection_client.py`. Arrhythmia router: `backend/routers/arrhythmia.py`. Frontend routes: `frontend-react/src/App.jsx`. Alert WebSocket hook: `frontend-react/src/hooks/useAlertsWS.js`. Alert store: `frontend-react/src/store/alertsStore.js`. Seizure C++ gate: `Repos/seizure_detection/runtime/include/seizure_gate.hpp`. Seizure C++ runtime: `Repos/seizure_detection/runtime/src/full_runtime.cpp`. Seizure service: `Repos/seizure_detection/service.py`. ViViT IPC server: `Repos/seizure_detection/runtime/vivit_ipc_server.py`. Fall service: `Repos/Patient-fall-detection-system-main/service.py`. Arrhythmia service: `Repos/Arrythmia-Detection-master/service.py`.
+Backend entry point: `backend/main.py`. Authentication and RBAC: `backend/auth.py`. Database schema: `backend/models.py`. Monitoring router: `backend/routers/monitoring.py`. Room router: `backend/routers/rooms.py`. Alert manager: `backend/services/alert_manager.py`. Seizure backend client: `backend/services/seizure_detection_client.py`. Arrhythmia router: `backend/routers/arrhythmia.py`. Frontend routes: `frontend/src/App.jsx`. Alert WebSocket hook: `frontend/src/hooks/useAlertsWS.js`. Alert store: `frontend/src/store/alertsStore.js`. Seizure C++ gate: `services/seizure_detection/runtime/include/seizure_gate.hpp`. Seizure C++ runtime: `services/seizure_detection/runtime/src/full_runtime.cpp`. Seizure service: `services/seizure_detection/service.py`. ViViT IPC server: `services/seizure_detection/runtime/vivit_ipc_server.py`. Fall service: `services/fall_detection/service.py`. Arrhythmia service: `services/arrhythmia/service.py`.
