@@ -381,13 +381,13 @@ For containerized deployment see `deployment/docker-compose.yml`.
 
 **Ain Shams University · Faculty of Computer & Information Sciences · AI Department · Class of 2026**
 
-| Name | Student ID |
-|---|---|
-| Omar Elsayed Ibrahim | 2022170827 |
-| Omar Mohamed Adel | 2022170829 |
-| Ali Tarek Fekry | 2022170825 |
-| Hazem Mohamed | 2022170810 |
-| Abdelrhman Mahmoud | 2022170846 |
+| Name | Student ID | LinkedIn |
+|---|---|---|
+| Omar Elsayed Ibrahim | 2022170827 | <a href="https://www.linkedin.com/in/omarelnokrashy/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
+| Omar Mohamed Adel | 2022170829 | <a href="https://www.linkedin.com/in/omar-mohamed-salama/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
+| Ali Tarek Fekry | 2022170825 | <a href="https://www.linkedin.com/in/alymaklad/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
+| Hazem Mohamed | 2022170810 | |
+| Abdelrhman Mahmoud | 2022170846 | |
 
 **Supervisors:** Dr. Salsabil Amin · T.A. Manar Sultan
 
