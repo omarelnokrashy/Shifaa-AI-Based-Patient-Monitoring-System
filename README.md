@@ -8,21 +8,20 @@ Developed as a graduation project at **Ain Shams University, Faculty of Computer
 
 ## ✨ Key Features
 
-| Module | Capability |
-|---|---|
-| 🤖 **Medical Chatbot** | Natural-language patient record Q&A, grounded in the EHR, ≤ 1 % hallucination |
-| 🫀 **Arrhythmia Detection** | Two-stage ECG cascade — 96.1 % / 94.9 % accuracy on Stage 1 / Stage 2 |
-| 🚶 **Fall Detection** | Four-stage vision pipeline (YOLO → Role → Pose → CTR-GCN), 98.83 % recall |
-| 🧠 **Seizure Detection** | Hybrid C++/ONNX + Python ViViT series-gate, ~37 FPS real-time, 96.69 % AUROC |
-| 🔔 **Alert Lifecycle** | Persist → Broadcast → Acknowledge → Archive — no alert ever lost |
-| 🏠 **Room-Centered RBAC** | Doctor / Nurse / Admin roles; nurses scoped to assigned rooms |
-| 📊 **Live Dashboards** | Ward station, per-room monitoring, service health, alert feeds |
-| 🔒 **Privacy by Default** | Entire stack — including LLM — runs locally; zero patient data leaves the premises |
+| Module                      | Capability                                                                         |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| 🤖 **Medical Chatbot**      | Natural-language patient record Q&A, grounded in the EHR, ≤ 1 % hallucination      |
+| 🫀 **Arrhythmia Detection** | Two-stage ECG cascade — 96.1 % / 94.9 % accuracy on Stage 1 / Stage 2              |
+| 🚶 **Fall Detection**       | Four-stage vision pipeline (YOLO → Role → Pose → CTR-GCN), 98.83 % recall          |
+| 🧠 **Seizure Detection**    | Hybrid C++/ONNX + Python ViViT series-gate, ~37 FPS real-time, 96.69 % AUROC       |
+| 🔔 **Alert Lifecycle**      | Persist → Broadcast → Acknowledge → Archive — no alert ever lost                   |
+| 🏠 **Room-Centered RBAC**   | Doctor / Nurse / Admin roles; nurses scoped to assigned rooms                      |
+| 📊 **Live Dashboards**      | Ward station, per-room monitoring, service health, alert feeds                     |
+| 🔒 **Privacy by Default**   | Entire stack — including LLM — runs locally; zero patient data leaves the premises |
 
 ---
 
 ## 🗺️ System Architecture
-
 
 <img src="uploads/Architectures/System_Architecture.png" alt="System Architecture" width="100%" />
 
@@ -69,14 +68,14 @@ Developed as a graduation project at **Ain Shams University, Faculty of Computer
 
 ### Prerequisites
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Python | 3.10+ | Backend + inference services |
-| Node.js | 18+ | Frontend build |
-| NVIDIA GPU + CUDA | 11.8 / 12.x | Required for real-time vision inference |
-| Ollama | latest | Optional — local MedGemma backend |
+| Requirement         | Version            | Notes                                     |
+| ------------------- | ------------------ | ----------------------------------------- |
+| Python              | 3.10+              | Backend + inference services              |
+| Node.js             | 18+                | Frontend build                            |
+| NVIDIA GPU + CUDA   | 11.8 / 12.x        | Required for real-time vision inference   |
+| Ollama              | latest             | Optional — local MedGemma backend         |
 | ONNX Runtime + MSVC | ORT 1.23+, VS 2022 | **Windows only** — seizure native runtime |
-| CMake | 3.16+ | Seizure runtime build |
+| CMake               | 3.16+              | Seizure runtime build                     |
 
 ---
 
@@ -104,11 +103,11 @@ cp .env.example .env
 
 Key variables (full reference in [Appendix A](#configuration-reference)):
 
-| Variable | Default | Description |
-|---|---|---|
-| `SECRET_KEY` | *(required)* | Long random string for JWT signing |
-| `LLM_BACKEND` | `ollama` | `ollama` (local) or `openai` (cloud) |
-| `OLLAMA_MODEL` | `medgemma1.5:latest` | Model served by Ollama |
+| Variable       | Default                     | Description                                    |
+| -------------- | --------------------------- | ---------------------------------------------- |
+| `SECRET_KEY`   | _(required)_                | Long random string for JWT signing             |
+| `LLM_BACKEND`  | `ollama`                    | `ollama` (local) or `openai` (cloud)           |
+| `OLLAMA_MODEL` | `medgemma1.5:latest`        | Model served by Ollama                         |
 | `DATABASE_URL` | `sqlite:///./medical_db.db` | Unset for SQLite; point at PostgreSQL for prod |
 
 ### 4 · Seed the Database
@@ -122,11 +121,11 @@ python tools/load_synthea_csv.py
 
 Default test credentials:
 
-| Role | Email | Password |
-|---|---|---|
+| Role   | Email               | Password  |
+| ------ | ------------------- | --------- |
 | Doctor | doctor@hospital.com | doctor123 |
-| Nurse | nurse@hospital.com | nurse123 |
-| Admin | admin@hospital.com | admin123 |
+| Nurse  | nurse@hospital.com  | nurse123  |
+| Admin  | admin@hospital.com  | admin123  |
 
 ### 5 · (Optional) Start Local LLM
 
@@ -139,21 +138,24 @@ ollama serve
 ### 6 · Start All Services
 
 **Windows:**
+
 ```powershell
 ./scripts/start_all_services.ps1
 ```
+
 **Linux / macOS:**
+
 ```bash
 ./scripts/start_all_services.sh
 ```
 
 This starts four processes:
 
-| Service | Port |
-|---|---|
-| FastAPI Gateway | 8000 |
-| Arrhythmia Service | 8001 |
-| Fall Detection Service | 8002 |
+| Service                   | Port |
+| ------------------------- | ---- |
+| FastAPI Gateway           | 8000 |
+| Arrhythmia Service        | 8001 |
+| Fall Detection Service    | 8002 |
 | Seizure Detection Service | 8003 |
 
 > ⚠️ The native seizure runtime must be compiled once with CMake + Visual Studio before the seizure service can start. See `services/seizure_detection/README.md`.
@@ -239,14 +241,14 @@ Supported intents: `history_lookup`, `medication_check`, `lab_results`, `allergy
 
 ## 🔐 Backend Architecture
 
-| Layer | Technology | Role |
-|---|---|---|
-| Web framework | FastAPI + Uvicorn | REST + WebSocket + SSE gateway |
-| Auth | JWT (HS256) + bcrypt | Stateless auth; RBAC per endpoint |
-| ORM | SQLAlchemy | Sync/async queries over SQLite or PostgreSQL |
-| Alert hub | `AlertManager` service | Publish, broadcast, expire — single source of truth |
-| AI clients | Async HTTP + WS clients | Thin wrappers for the three inference services |
-| LLM client | OpenAI-compatible SDK | Targets Ollama (local) or cloud, switchable by config |
+| Layer         | Technology              | Role                                                  |
+| ------------- | ----------------------- | ----------------------------------------------------- |
+| Web framework | FastAPI + Uvicorn       | REST + WebSocket + SSE gateway                        |
+| Auth          | JWT (HS256) + bcrypt    | Stateless auth; RBAC per endpoint                     |
+| ORM           | SQLAlchemy              | Sync/async queries over SQLite or PostgreSQL          |
+| Alert hub     | `AlertManager` service  | Publish, broadcast, expire — single source of truth   |
+| AI clients    | Async HTTP + WS clients | Thin wrappers for the three inference services        |
+| LLM client    | OpenAI-compatible SDK   | Targets Ollama (local) or cloud, switchable by config |
 
 **Nine routers:** `auth`, `patients`, `rooms`, `chat`, `uploads`, `users`, `arrhythmia`, `monitoring`, `dashboard`.
 
@@ -256,37 +258,37 @@ Supported intents: `history_lookup`, `medication_check`, `lab_results`, `allergy
 
 Built with **React 18 · Vite · Tailwind CSS · Zustand · React Router · Axios · Recharts**.
 
-| Concern | Approach |
-|---|---|
-| State | Two Zustand stores: `authStore` (JWT + decoded user) · `alertsStore` (live feed, capped at 200) |
-| Routing | Declarative `RoleGuard` — redirects unauthenticated users and role mismatches |
-| Real-time | `useAlerts` hook — WebSocket with exponential back-off reconnection |
-| Streaming chat | `useChatStream` hook — separates `<think>` reasoning blocks from final answer |
-| Data mode | `VITE_DATA_MODE=mock` → simulated data; `live` → real backend |
+| Concern        | Approach                                                                                        |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| State          | Two Zustand stores: `authStore` (JWT + decoded user) · `alertsStore` (live feed, capped at 200) |
+| Routing        | Declarative `RoleGuard` — redirects unauthenticated users and role mismatches                   |
+| Real-time      | `useAlerts` hook — WebSocket with exponential back-off reconnection                             |
+| Streaming chat | `useChatStream` hook — separates `<think>` reasoning blocks from final answer                   |
+| Data mode      | `VITE_DATA_MODE=mock` → simulated data; `live` → real backend                                   |
 
 **Pages by role:**
 
-| Role | Pages |
-|---|---|
+| Role   | Pages                                                                                                           |
+| ------ | --------------------------------------------------------------------------------------------------------------- |
 | Doctor | Dashboard · Rooms Board · Patient List · Patient Detail (Overview / Chat / ECG / Logs) · Live Monitor · Sandbox |
-| Nurse | Triage Dashboard · Scoped Ward Monitor |
-| Admin | System Health · User Management · Room Configuration |
+| Nurse  | Triage Dashboard · Scoped Ward Monitor                                                                          |
+| Admin  | System Health · User Management · Room Configuration                                                            |
 
 ---
 
 ## 📈 Benchmark Summary
 
-| Subsystem | Metric | Result |
-|---|---|---|
-| Chatbot — Intent | Accuracy / Macro-F1 | 94.1% / 0.94 |
-| Chatbot — NER | Macro-F1 | 94.0% |
-| Chatbot — Retrieval | Exact match | 97.0% |
-| Chatbot — Grounding | Hallucination rate | ≤ 1% |
-| ECG Stage 1 | Accuracy / AUROC | 96.10% / 98.26% |
-| ECG Stage 2 | Accuracy / AUROC | 94.92% / 99.43% |
-| Fall — CTR-GCN | Accuracy / Fall-F1 / Recall | 91.59% / 94.87% / 98.83% |
-| Seizure — segments | AUROC / F1 / Recall | 96.69% / 90.18% / 98.45% |
-| Seizure — runtime | Throughput | ~37.2 FPS |
+| Subsystem           | Metric                      | Result                   |
+| ------------------- | --------------------------- | ------------------------ |
+| Chatbot — Intent    | Accuracy / Macro-F1         | 94.1% / 0.94             |
+| Chatbot — NER       | Macro-F1                    | 94.0%                    |
+| Chatbot — Retrieval | Exact match                 | 97.0%                    |
+| Chatbot — Grounding | Hallucination rate          | ≤ 1%                     |
+| ECG Stage 1         | Accuracy / AUROC            | 96.10% / 98.26%          |
+| ECG Stage 2         | Accuracy / AUROC            | 94.92% / 99.43%          |
+| Fall — CTR-GCN      | Accuracy / Fall-F1 / Recall | 91.59% / 94.87% / 98.83% |
+| Seizure — segments  | AUROC / F1 / Recall         | 96.69% / 90.18% / 98.45% |
+| Seizure — runtime   | Throughput                  | ~37.2 FPS                |
 
 ---
 
@@ -294,56 +296,56 @@ Built with **React 18 · Vite · Tailwind CSS · Zustand · React Router · Axio
 
 ### Backend (`.env`)
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `SECRET_KEY` | ✅ | — | JWT signing key |
-| `DATABASE_URL` | ❌ | `sqlite:///./medical_db.db` | PostgreSQL connection string for production |
-| `LLM_BACKEND` | ❌ | `ollama` | `ollama` or `openai` |
-| `OLLAMA_MODEL` | ❌ | `medgemma1.5:latest` | Ollama model name |
-| `OPENAI_API_KEY` | if openai | — | Cloud LLM API key |
-| `ARRHYTHMIA_SERVICE_URL` | ❌ | `http://localhost:8001` | |
-| `FALL_DETECTION_SERVICE_URL` | ❌ | `http://localhost:8002` | |
-| `SEIZURE_DETECTION_SERVICE_URL` | ❌ | `http://localhost:8003` | |
+| Variable                        | Required  | Default                     | Description                                 |
+| ------------------------------- | --------- | --------------------------- | ------------------------------------------- |
+| `SECRET_KEY`                    | ✅        | —                           | JWT signing key                             |
+| `DATABASE_URL`                  | ❌        | `sqlite:///./medical_db.db` | PostgreSQL connection string for production |
+| `LLM_BACKEND`                   | ❌        | `ollama`                    | `ollama` or `openai`                        |
+| `OLLAMA_MODEL`                  | ❌        | `medgemma1.5:latest`        | Ollama model name                           |
+| `OPENAI_API_KEY`                | if openai | —                           | Cloud LLM API key                           |
+| `ARRHYTHMIA_SERVICE_URL`        | ❌        | `http://localhost:8001`     |                                             |
+| `FALL_DETECTION_SERVICE_URL`    | ❌        | `http://localhost:8002`     |                                             |
+| `SEIZURE_DETECTION_SERVICE_URL` | ❌        | `http://localhost:8003`     |                                             |
 
 ### Frontend (`frontend/.env`)
 
-| Variable | Description |
-|---|---|
-| `VITE_API_URL` | Backend REST base URL (e.g. `http://localhost:8000`) |
-| `VITE_WS_URL` | Backend WebSocket base URL (e.g. `ws://localhost:8000`) |
-| `VITE_DATA_MODE` | `mock` for offline demo · `live` for real backend |
+| Variable         | Description                                             |
+| ---------------- | ------------------------------------------------------- |
+| `VITE_API_URL`   | Backend REST base URL (e.g. `http://localhost:8000`)    |
+| `VITE_WS_URL`    | Backend WebSocket base URL (e.g. `ws://localhost:8000`) |
+| `VITE_DATA_MODE` | `mock` for offline demo · `live` for real backend       |
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Category | Technology |
-|---|---|
-| Languages | Python 3.10, JavaScript ES2022, C++17, SQL |
-| Backend | FastAPI, Uvicorn, SQLAlchemy, Pydantic, python-jose, passlib/bcrypt |
-| Database | SQLite (default) · PostgreSQL 14+ (production) |
-| LLM | MedGemma 1.5 via Ollama (local) or OpenAI-compatible cloud |
-| Deep Learning | PyTorch, Ultralytics YOLOv8, MediaPipe, timm, transformers |
-| Native Inference | ONNX Runtime (CUDA/TensorRT), C++17, Win32 named-pipe IPC, OpenCV |
-| Frontend | React 18, Vite, Tailwind CSS, Zustand, React Router, Axios, Recharts |
-| Testing | pytest, httpx |
-| Data | Synthea, pandas, wfdb, Faker |
-| Tooling | Git, Conda, Node.js/npm, CMake, Visual Studio 2022, VS Code |
+| Category         | Technology                                                           |
+| ---------------- | -------------------------------------------------------------------- |
+| Languages        | Python 3.10, JavaScript ES2022, C++17, SQL                           |
+| Backend          | FastAPI, Uvicorn, SQLAlchemy, Pydantic, python-jose, passlib/bcrypt  |
+| Database         | SQLite (default) · PostgreSQL 14+ (production)                       |
+| LLM              | MedGemma 1.5 via Ollama (local) or OpenAI-compatible cloud           |
+| Deep Learning    | PyTorch, Ultralytics YOLOv8, MediaPipe, timm, transformers           |
+| Native Inference | ONNX Runtime (CUDA/TensorRT), C++17, Win32 named-pipe IPC, OpenCV    |
+| Frontend         | React 18, Vite, Tailwind CSS, Zustand, React Router, Axios, Recharts |
+| Testing          | pytest, httpx                                                        |
+| Data             | Synthea, pandas, wfdb, Faker                                         |
+| Tooling          | Git, Conda, Node.js/npm, CMake, Visual Studio 2022, VS Code          |
 
 ---
 
 ## 🩺 Troubleshooting
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| DB errors on first run | Wrong `DATABASE_URL` | Unset it for SQLite, or start PostgreSQL |
-| 500 on login | bcrypt version mismatch | `pip install bcrypt==4.0.1` |
-| WebSocket refused | Backend not running | Verify Uvicorn + `VITE_WS_URL` |
-| LLM timeout | Model not loaded | `ollama pull medgemma1.5:latest` |
-| Blank patient list | Empty database | Run `python tools/seed.py` |
-| Seizure stuck on SEIZURE | 30-second latch active | Wait for latch to clear, or call reset-latch endpoint |
-| `No providers found` / pipe errno 22 | C++ runtime not built with CUDA EP | Rebuild in Release with CUDA provider DLLs |
-| Service offline in dashboard | Inference service not started | Run launcher script or start service on 8001–8003 |
+| Symptom                              | Likely Cause                       | Fix                                                   |
+| ------------------------------------ | ---------------------------------- | ----------------------------------------------------- |
+| DB errors on first run               | Wrong `DATABASE_URL`               | Unset it for SQLite, or start PostgreSQL              |
+| 500 on login                         | bcrypt version mismatch            | `pip install bcrypt==4.0.1`                           |
+| WebSocket refused                    | Backend not running                | Verify Uvicorn + `VITE_WS_URL`                        |
+| LLM timeout                          | Model not loaded                   | `ollama pull medgemma1.5:latest`                      |
+| Blank patient list                   | Empty database                     | Run `python tools/seed.py`                            |
+| Seizure stuck on SEIZURE             | 30-second latch active             | Wait for latch to clear, or call reset-latch endpoint |
+| `No providers found` / pipe errno 22 | C++ runtime not built with CUDA EP | Rebuild in Release with CUDA provider DLLs            |
+| Service offline in dashboard         | Inference service not started      | Run launcher script or start service on 8001–8003     |
 
 ---
 
@@ -366,14 +368,14 @@ For containerized deployment see `deployment/docker-compose.yml`.
 
 ## 📚 Documentation
 
-| Resource | Location |
-|---|---|
-| Thesis Document | `docs/research/Shifaa_Documentation.pdf` |
-| Shifaa's Paper | `docs/research/paper.pdf` |
-| Software Documentation | `docs/software_doc.md` |
-| Interactive API docs | http://localhost:8000/docs (auto-generated by FastAPI) |
+| Resource                 | Location                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Thesis Document          | `docs/research/Shifaa_Documentation.pdf`                                                                     |
+| Shifaa's Paper           | `docs/research/paper.pdf`                                                                                    |
+| Software Documentation   | `docs/software_doc.md`                                                                                       |
+| Interactive API docs     | http://localhost:8000/docs (auto-generated by FastAPI)                                                       |
 | Service-specific READMEs | `services/arrhythmia/README.md`, `services/fall_detection/README.md`, `services/seizure_detection/README.md` |
-| RAG READMEs | `docs/RAG` |
+| RAG READMEs              | `docs/RAG`                                                                                                   |
 
 ---
 
@@ -381,13 +383,13 @@ For containerized deployment see `deployment/docker-compose.yml`.
 
 **Ain Shams University · Faculty of Computer & Information Sciences · AI Department · Class of 2026**
 
-| Name | Student ID | LinkedIn |
-|---|---|---|
-| Omar Elsayed Ibrahim | 2022170827 | <a href="https://www.linkedin.com/in/omarelnokrashy/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
-| Omar Mohamed Adel | 2022170829 | <a href="https://www.linkedin.com/in/omar-mohamed-salama/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
-| Ali Tarek Fekry | 2022170825 | <a href="https://www.linkedin.com/in/alymaklad/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
-| Hazem Mohamed | 2022170810 | <a href="https://www.linkedin.com/in/hazem-mohamed/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
-| Abdelrhman Mahmoud | 2022170846 | <a href="https://www.linkedin.com/in/abdelrahmanmahmoud/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
+| Name                 | Student ID | LinkedIn                                                                                                                                                |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Omar Elsayed Ibrahim | 2022170827 | <a href="https://www.linkedin.com/in/omarelnokrashy/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a>      |
+| Omar Mohamed Adel    | 2022170829 | <a href="https://www.linkedin.com/in/omar-mohamed-salama/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a> |
+| Ali Tarek Fekry      | 2022170825 | <a href="https://www.linkedin.com/in/alymaklad/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a>           |
+| Hazem Mohamed        | 2022170810 | <a href="https://www.linkedin.com/in/hazem-abdelazim/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a>     |
+| Abdelrhman Mahmoud   | 2022170846 | <a href="https://www.linkedin.com/in/abdelrahmanmahmoud/"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin" height="20"></a>  |
 
 **Supervisors:** Dr. Salsabil Amin · T.A. Manar Sultan
 
