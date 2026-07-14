@@ -28,11 +28,55 @@ if (Test-Path $envFile) {
 }
 
 # -- 2. Pick Python Interpreter ------------------------------------------------
-# Use the python from the active conda/venv environment, or fall back to PATH.
-$pythonPath = (Get-Command python -ErrorAction SilentlyContinue).Source
-if (-not $pythonPath) {
-    $pythonPath = "python"
+# Priority:
+#   1. Explicitly activated project conda env (CONDA_PREFIX set, AND uvicorn importable)
+#   2. A known project env ('medical_chatbot' or 'shifaa') under common conda roots
+#   3. The python in PATH (if uvicorn is importable from it)
+#   4. Bare 'python' fallback (will fail at runtime if packages are missing)
+
+$pythonPath = $null
+
+function Test-HasUvicorn([string]$pyExe) {
+    & $pyExe -c "import uvicorn" 2>$null
+    return $LASTEXITCODE -eq 0
 }
+
+# Option 1 — active conda env (but NOT the base env which won't have uvicorn)
+if ($env:CONDA_PREFIX -and (Test-Path "$env:CONDA_PREFIX\python.exe")) {
+    $candidate = "$env:CONDA_PREFIX\python.exe"
+    if (Test-HasUvicorn $candidate) { $pythonPath = $candidate }
+}
+
+# Option 2 — search common conda install locations for named project envs
+if (-not $pythonPath) {
+    $condaRoots = @(
+        "$env:USERPROFILE\miniconda3",
+        "$env:USERPROFILE\anaconda3",
+        "$env:USERPROFILE\Anaconda3",
+        "C:\ProgramData\miniconda3",
+        "C:\ProgramData\Anaconda3"
+    )
+    foreach ($root in $condaRoots) {
+        if (-not (Test-Path $root)) { continue }
+        foreach ($envName in @("medical_chatbot", "shifaa", "gp")) {
+            $candidate = "$root\envs\$envName\python.exe"
+            if ((Test-Path $candidate) -and (Test-HasUvicorn $candidate)) {
+                $pythonPath = $candidate; break
+            }
+        }
+        if ($pythonPath) { break }
+    }
+}
+
+# Option 3 — python in PATH that already has uvicorn
+if (-not $pythonPath) {
+    $pathPython = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($pathPython -and (Test-HasUvicorn $pathPython)) { $pythonPath = $pathPython }
+}
+
+# Option 4 — bare fallback
+if (-not $pythonPath) { $pythonPath = "python" }
+
 Write-Host "[OK] Using Python: $pythonPath" -ForegroundColor Cyan
 
 # -- 3. Ports Configuration ----------------------------------------------------
