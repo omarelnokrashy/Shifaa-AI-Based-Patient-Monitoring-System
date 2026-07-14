@@ -1,0 +1,340 @@
+{
+  "timestamp": "2026-07-04T17:29:26.695189",
+  "patient_id": 1,
+  "runs_per_query": 1,
+  "queries_benchmarked": [
+    {
+      "query": "What medications is this patient taking?",
+      "expected_intent": "medication_check",
+      "intent_detected": "history_lookup",
+      "intent_match": false,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "history_lookup",
+          "intent_stage_ms": 3237.883800000418,
+          "intent_model_ms": 3237.839300010819,
+          "ner_stage_ms": 3201.0239000082947,
+          "ner_model_ms": 3200.9964999742806,
+          "retrieval_stage_ms": 349.4815999874845,
+          "generation_stage_ms": 7682.949899986852,
+          "generator_model_ms": 7682.949899986852,
+          "ttft_from_gen_ms": 4698.0047999823,
+          "ttft_from_query_ms": 11486.395899992203,
+          "total_query_ms": 14471.341900003608,
+          "tokens_generated": 182,
+          "tokens_per_sec": 23.688817754793828
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 3237.883800000418,
+        "intent_model_ms": 3237.839300010819,
+        "ner_stage_ms": 3201.0239000082947,
+        "ner_model_ms": 3200.9964999742806,
+        "retrieval_stage_ms": 349.4815999874845,
+        "generation_stage_ms": 7682.949899986852,
+        "generator_model_ms": 7682.949899986852,
+        "ttft_from_gen_ms": 4698.0047999823,
+        "ttft_from_query_ms": 11486.395899992203,
+        "total_query_ms": 14471.341900003608,
+        "tokens_per_sec": 23.688817754793828
+      }
+    },
+    {
+      "query": "Show me the last HbA1c result",
+      "expected_intent": "lab_results",
+      "intent_detected": "history_lookup",
+      "intent_match": false,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "history_lookup",
+          "intent_stage_ms": 3041.1413999972865,
+          "intent_model_ms": 3041.1091999849305,
+          "ner_stage_ms": 3063.3709999965504,
+          "ner_model_ms": 3063.341600005515,
+          "retrieval_stage_ms": 293.32399999839254,
+          "generation_stage_ms": 6707.314500003122,
+          "generator_model_ms": 6707.314500003122,
+          "ttft_from_gen_ms": 4542.2889000037685,
+          "ttft_from_query_ms": 10940.127599984407,
+          "total_query_ms": 13105.154399992898,
+          "tokens_generated": 138,
+          "tokens_per_sec": 20.57455334768271
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 3041.1413999972865,
+        "intent_model_ms": 3041.1091999849305,
+        "ner_stage_ms": 3063.3709999965504,
+        "ner_model_ms": 3063.341600005515,
+        "retrieval_stage_ms": 293.32399999839254,
+        "generation_stage_ms": 6707.314500003122,
+        "generator_model_ms": 6707.314500003122,
+        "ttft_from_gen_ms": 4542.2889000037685,
+        "ttft_from_query_ms": 10940.127599984407,
+        "total_query_ms": 13105.154399992898,
+        "tokens_per_sec": 20.57455334768271
+      }
+    },
+    {
+      "query": "Any drug allergies?",
+      "expected_intent": "allergy_check",
+      "intent_detected": "allergy_check",
+      "intent_match": true,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "allergy_check",
+          "intent_stage_ms": 2959.955700003775,
+          "intent_model_ms": 2959.9223000113852,
+          "ner_stage_ms": 3115.850000001956,
+          "ner_model_ms": 3115.8218999917153,
+          "retrieval_stage_ms": 1.336699991952628,
+          "generation_stage_ms": 4528.19479999016,
+          "generator_model_ms": 4528.19479999016,
+          "ttft_from_gen_ms": 4361.71800000011,
+          "ttft_from_query_ms": 10438.862500013784,
+          "total_query_ms": 10605.340800015256,
+          "tokens_generated": 11,
+          "tokens_per_sec": 2.429224113773529
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 2959.955700003775,
+        "intent_model_ms": 2959.9223000113852,
+        "ner_stage_ms": 3115.850000001956,
+        "ner_model_ms": 3115.8218999917153,
+        "retrieval_stage_ms": 1.336699991952628,
+        "generation_stage_ms": 4528.19479999016,
+        "generator_model_ms": 4528.19479999016,
+        "ttft_from_gen_ms": 4361.71800000011,
+        "ttft_from_query_ms": 10438.862500013784,
+        "total_query_ms": 10605.340800015256,
+        "tokens_per_sec": 2.429224113773529
+      }
+    },
+    {
+      "query": "Last 3 visits summary",
+      "expected_intent": "visit_summary",
+      "intent_detected": "visit_summary",
+      "intent_match": true,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "visit_summary",
+          "intent_stage_ms": 2999.8151999898255,
+          "intent_model_ms": 2999.7798999829683,
+          "ner_stage_ms": 3070.020100014517,
+          "ner_model_ms": 3069.9931000126526,
+          "retrieval_stage_ms": 3.478899976471439,
+          "generation_stage_ms": 15789.931500010425,
+          "generator_model_ms": 15789.931500010425,
+          "ttft_from_gen_ms": 4376.719199994113,
+          "ttft_from_query_ms": 10450.035499990918,
+          "total_query_ms": 21863.248900015606,
+          "tokens_generated": 756,
+          "tokens_per_sec": 47.87861175962042
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 2999.8151999898255,
+        "intent_model_ms": 2999.7798999829683,
+        "ner_stage_ms": 3070.020100014517,
+        "ner_model_ms": 3069.9931000126526,
+        "retrieval_stage_ms": 3.478899976471439,
+        "generation_stage_ms": 15789.931500010425,
+        "generator_model_ms": 15789.931500010425,
+        "ttft_from_gen_ms": 4376.719199994113,
+        "ttft_from_query_ms": 10450.035499990918,
+        "total_query_ms": 21863.248900015606,
+        "tokens_per_sec": 47.87861175962042
+      }
+    },
+    {
+      "query": "What conditions does this patient have?",
+      "expected_intent": "diagnosis_check",
+      "intent_detected": "general_question",
+      "intent_match": false,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "general_question",
+          "intent_stage_ms": 2976.030999998329,
+          "intent_model_ms": 2976.001400005771,
+          "ner_stage_ms": 3009.8691000021063,
+          "ner_model_ms": 3009.8428999772295,
+          "retrieval_stage_ms": 0.02370000584051013,
+          "generation_stage_ms": 7828.236900008051,
+          "generator_model_ms": 7828.236900008051,
+          "ttft_from_gen_ms": 4560.594000009587,
+          "ttft_from_query_ms": 10546.51919999742,
+          "total_query_ms": 13814.163400005782,
+          "tokens_generated": 212,
+          "tokens_per_sec": 27.081449208541706
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 2976.030999998329,
+        "intent_model_ms": 2976.001400005771,
+        "ner_stage_ms": 3009.8691000021063,
+        "ner_model_ms": 3009.8428999772295,
+        "retrieval_stage_ms": 0.02370000584051013,
+        "generation_stage_ms": 7828.236900008051,
+        "generator_model_ms": 7828.236900008051,
+        "ttft_from_gen_ms": 4560.594000009587,
+        "ttft_from_query_ms": 10546.51919999742,
+        "total_query_ms": 13814.163400005782,
+        "tokens_per_sec": 27.081449208541706
+      }
+    },
+    {
+      "query": "Give me a brief medical history",
+      "expected_intent": "history_lookup",
+      "intent_detected": "history_lookup",
+      "intent_match": true,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "history_lookup",
+          "intent_stage_ms": 2907.2006000205874,
+          "intent_model_ms": 2907.1719000057783,
+          "ner_stage_ms": 2981.8890999886207,
+          "ner_model_ms": 2981.860300002154,
+          "retrieval_stage_ms": 274.01399999507703,
+          "generation_stage_ms": 14919.0095999802,
+          "generator_model_ms": 14919.0095999802,
+          "ttft_from_gen_ms": 4601.361399982125,
+          "ttft_from_query_ms": 10764.467300003162,
+          "total_query_ms": 21082.116600009613,
+          "tokens_generated": 670,
+          "tokens_per_sec": 44.909147320401836
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 2907.2006000205874,
+        "intent_model_ms": 2907.1719000057783,
+        "ner_stage_ms": 2981.8890999886207,
+        "ner_model_ms": 2981.860300002154,
+        "retrieval_stage_ms": 274.01399999507703,
+        "generation_stage_ms": 14919.0095999802,
+        "generator_model_ms": 14919.0095999802,
+        "ttft_from_gen_ms": 4601.361399982125,
+        "ttft_from_query_ms": 10764.467300003162,
+        "total_query_ms": 21082.116600009613,
+        "tokens_per_sec": 44.909147320401836
+      }
+    },
+    {
+      "query": "Are there any concerning findings?",
+      "expected_intent": "risk_flag",
+      "intent_detected": "general_question",
+      "intent_match": false,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "general_question",
+          "intent_stage_ms": 2950.031799991848,
+          "intent_model_ms": 2950.0031000061426,
+          "ner_stage_ms": 3022.1985999960452,
+          "ner_model_ms": 3022.1729000040796,
+          "retrieval_stage_ms": 0.029199989512562752,
+          "generation_stage_ms": 21100.10360000888,
+          "generator_model_ms": 21100.10360000888,
+          "ttft_from_gen_ms": 4457.263600022998,
+          "ttft_from_query_ms": 10429.52440000954,
+          "total_query_ms": 27072.365300002275,
+          "tokens_generated": 1025,
+          "tokens_per_sec": 48.5779605366283
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 2950.031799991848,
+        "intent_model_ms": 2950.0031000061426,
+        "ner_stage_ms": 3022.1985999960452,
+        "ner_model_ms": 3022.1729000040796,
+        "retrieval_stage_ms": 0.029199989512562752,
+        "generation_stage_ms": 21100.10360000888,
+        "generator_model_ms": 21100.10360000888,
+        "ttft_from_gen_ms": 4457.263600022998,
+        "ttft_from_query_ms": 10429.52440000954,
+        "total_query_ms": 27072.365300002275,
+        "tokens_per_sec": 48.5779605366283
+      }
+    },
+    {
+      "query": "Is the patient on metformin?",
+      "expected_intent": "medication_check",
+      "intent_detected": "visit_summary",
+      "intent_match": false,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "visit_summary",
+          "intent_stage_ms": 3137.4586000165436,
+          "intent_model_ms": 3137.43259999319,
+          "ner_stage_ms": 3130.180499982089,
+          "ner_model_ms": 3130.154099984793,
+          "retrieval_stage_ms": 1.795399992261082,
+          "generation_stage_ms": 7744.695500005037,
+          "generator_model_ms": 7744.695500005037,
+          "ttft_from_gen_ms": 4464.501000009477,
+          "ttft_from_query_ms": 10733.937400014838,
+          "total_query_ms": 14014.133100019535,
+          "tokens_generated": 217,
+          "tokens_per_sec": 28.019177771399647
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 3137.4586000165436,
+        "intent_model_ms": 3137.43259999319,
+        "ner_stage_ms": 3130.180499982089,
+        "ner_model_ms": 3130.154099984793,
+        "retrieval_stage_ms": 1.795399992261082,
+        "generation_stage_ms": 7744.695500005037,
+        "generator_model_ms": 7744.695500005037,
+        "ttft_from_gen_ms": 4464.501000009477,
+        "ttft_from_query_ms": 10733.937400014838,
+        "total_query_ms": 14014.133100019535,
+        "tokens_per_sec": 28.019177771399647
+      }
+    },
+    {
+      "query": "Lab results from last 6 months",
+      "expected_intent": "lab_results",
+      "intent_detected": "lab_results",
+      "intent_match": true,
+      "runs": [
+        {
+          "run": 1,
+          "intent_detected": "lab_results",
+          "intent_stage_ms": 2938.9813000161666,
+          "intent_model_ms": 2938.9479999954347,
+          "ner_stage_ms": 3074.763399985386,
+          "ner_model_ms": 3074.7403999848757,
+          "retrieval_stage_ms": 238.31650000647642,
+          "generation_stage_ms": 33491.61540000932,
+          "generator_model_ms": 33491.61540000932,
+          "ttft_from_gen_ms": 4281.729500013171,
+          "ttft_from_query_ms": 10533.793400012655,
+          "total_query_ms": 39743.68040001718,
+          "tokens_generated": 1775,
+          "tokens_per_sec": 52.998339399284575
+        }
+      ],
+      "averages": {
+        "intent_stage_ms": 2938.9813000161666,
+        "intent_model_ms": 2938.9479999954347,
+        "ner_stage_ms": 3074.763399985386,
+        "ner_model_ms": 3074.7403999848757,
+        "retrieval_stage_ms": 238.31650000647642,
+        "generation_stage_ms": 33491.61540000932,
+        "generator_model_ms": 33491.61540000932,
+        "ttft_from_gen_ms": 4281.729500013171,
+        "ttft_from_query_ms": 10533.793400012655,
+        "total_query_ms": 39743.68040001718,
+        "tokens_per_sec": 52.998339399284575
+      }
+    }
+  ]
+}

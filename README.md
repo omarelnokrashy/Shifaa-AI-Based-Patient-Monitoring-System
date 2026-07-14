@@ -83,14 +83,55 @@ Developed as a graduation project at **Ain Shams University, Faculty of Computer
 
 ```bash
 git clone https://github.com/omarelnokrashy/Shifaa-AI-Based-Patient-Monitoring-System.git
-cd Medical-History-Chatbot
+cd Shifaa-AI-Based-Patient-Monitoring-System
 ```
+
+---
+
+### ⚡ Quick Setup (Recommended)
+
+Run the one-shot setup script. It installs CUDA PyTorch, all Python deps, copies `.env`,
+seeds the database, and caches the ViViT model automatically:
+
+**Windows:**
+```powershell
+# Activate your conda env first:
+conda create -n shifaa python=3.10 -y && conda activate shifaa
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+**Linux / macOS:**
+```bash
+conda create -n shifaa python=3.10 -y && conda activate shifaa
+bash scripts/setup.sh
+```
+
+> Skip to **[Step 6 · Start All Services](#6--start-all-services)** after the script completes.
+
+---
+
+*Or follow the manual steps below:*
 
 ### 2 · Python Environment
 
 ```bash
 conda create -n shifaa python=3.10 -y
 conda activate shifaa
+```
+
+**GPU users (required for fall & seizure detection):** Install CUDA-enabled PyTorch
+*before* running `requirements.txt` — the default pip build is CPU-only:
+```bash
+# CUDA 11.8:
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# or CUDA 12.x:
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# Then install onnxruntime-gpu for GPU-accelerated ONNX inference:
+pip install onnxruntime-gpu>=1.23.0
+```
+
+Then install all other dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
@@ -98,7 +139,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env — set SECRET_KEY, LLM_BACKEND, OLLAMA_MODEL, and service ports
+# Review .env and set SECRET_KEY to a long random string
 ```
 
 Key variables (full reference in [Appendix A](#configuration-reference)):
@@ -127,8 +168,14 @@ Default test credentials:
 | Nurse  | nurse@hospital.com  | nurse123  |
 | Admin  | admin@hospital.com  | admin123  |
 
-### 5 · (Optional) Start Local LLM
+### 5 · (Optional) Download ViViT Weights + Start Local LLM
 
+Download the ViViT model weights used by the seizure detection service:
+```bash
+python scripts/download_vivit.py   # ~300 MB, required for seizure service
+```
+
+If using Ollama for local LLM inference:
 ```bash
 ollama pull medgemma1.5:latest
 ollama pull qwen2.5:0.5b

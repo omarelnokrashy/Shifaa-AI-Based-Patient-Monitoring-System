@@ -1,0 +1,8 @@
+submit evidence
+
+conda activate base
+
+(base) PS F:\GP\Deployment\Medical-History-Chatbot> powershell -ExecutionPolicy Bypass -File .\start_all_services.ps1
+(base) PS F:\GP\Deployment\Medical-History-Chatbot\frontend> npm run dev
+
+http://localhost:5173/

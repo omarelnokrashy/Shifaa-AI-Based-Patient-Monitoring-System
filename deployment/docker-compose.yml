@@ -1,0 +1,141 @@
+# =============================================================================
+# Shifaa Medical Monitoring System — Docker Compose
+# =============================================================================
+# Usage:
+#   docker compose up --build
+#
+# Prerequisites:
+#   - Docker 24+ with Docker Compose v2
+#   - NVIDIA GPU + nvidia-container-toolkit (for GPU inference)
+#   - .env file at the repository root (copy from .env.example)
+#
+# GPU note:
+#   The seizure and fall detection services require a CUDA-capable GPU.
+#   Ensure nvidia-container-toolkit is installed:
+#     https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+# =============================================================================
+
+version: "3.9"
+
+x-gpu-config: &gpu-config
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+services:
+
+  # ── Main FastAPI Backend ───────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.backend
+    container_name: shifaa-backend
+    ports:
+      - "${MAIN_PORT:-8000}:8000"
+    volumes:
+      - ./medical_db.db:/app/medical_db.db
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///./medical_db.db
+      - ARRHYTHMIA_SERVICE_URL=http://arrhythmia:8001
+      - FALL_DETECTION_SERVICE_URL=http://fall-detection:8002
+      - SEIZURE_DETECTION_SERVICE_URL=http://seizure-detection:8003
+    depends_on:
+      - arrhythmia
+      - fall-detection
+      - seizure-detection
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Arrhythmia Service ─────────────────────────────────────────────────────
+  arrhythmia:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.arrhythmia
+    container_name: shifaa-arrhythmia
+    ports:
+      - "${ARRHYTHMIA_PORT:-8001}:8001"
+    volumes:
+      - ./models:/app/models:ro
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Fall Detection Service ─────────────────────────────────────────────────
+  fall-detection:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.fall
+    container_name: shifaa-fall
+    ports:
+      - "${FALL_DETECTION_PORT:-8002}:8002"
+    volumes:
+      - ./models:/app/models:ro
+    env_file:
+      - .env
+    <<: *gpu-config
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Seizure Detection Service ──────────────────────────────────────────────
+  # NOTE: This service uses a Windows-native C++ runtime (seizure_runtime_cpp.exe)
+  # and Windows Named Pipes for IPC. The Docker image below uses the Python-only
+  # sidecar (vivit_ipc_server.py). A pure Windows host is required for the full
+  # C++ + ONNX Runtime pipeline.
+  seizure-detection:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.seizure
+    container_name: shifaa-seizure
+    ports:
+      - "${SEIZURE_DETECTION_PORT:-8003}:8003"
+    volumes:
+      - ./models:/app/models:ro
+      - seizure-outputs:/app/outputs/runtime
+      # Mount HuggingFace cache so the container reuses already-downloaded ViViT weights
+      - ${HF_HOME:-~/.cache/huggingface}:/root/.cache/huggingface:ro
+    env_file:
+      - .env
+    environment:
+      - HF_HUB_DISABLE_TELEMETRY=1
+    <<: *gpu-config
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Frontend (production build served by Nginx) ────────────────────────────
+  frontend:
+    build:
+      context: frontend
+      dockerfile: ../deployment/Dockerfile.frontend
+    container_name: shifaa-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  seizure-outputs:

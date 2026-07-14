@@ -48,8 +48,20 @@ def video_duration_sec(path: Path) -> tuple[float, int, float]:
     return frames / fps if fps else 0.0, frames, fps
 
 
+def _get_torch_lib_path() -> str | None:
+    """Return the torch/lib directory for the current interpreter, or None."""
+    try:
+        import importlib.util as _ilu
+        spec = _ilu.find_spec('torch')
+        if spec and spec.origin:
+            from pathlib import Path as _P
+            lib = str(_P(spec.origin).parent / 'lib')
+            return lib if __import__('os').path.isdir(lib) else None
+    except Exception:
+        return None
+
+
 def run_video(video_path: Path, out_csv: Path, display: bool) -> dict:
-    os.environ["PATH"] = r"C:\Users\omars\miniconda3\Lib\site-packages\torch\lib;" + os.environ.get("PATH", "")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     ipc_cmd = [
         "python",
@@ -77,10 +89,10 @@ def run_video(video_path: Path, out_csv: Path, display: bool) -> dict:
     duration, frames, source_fps = video_duration_sec(video_path)
     timeout_sec = max(180.0, duration * 4.0 + 60.0)
 
+    torch_lib = _get_torch_lib_path()
     env = os.environ.copy()
-    env["PATH"] = r"C:\Users\omars\miniconda3\Lib\site-packages\torch\lib;" + env.get("PATH", "")
-    env["HF_HUB_OFFLINE"] = "1"
-    env["TRANSFORMERS_OFFLINE"] = "1"
+    if torch_lib:
+        env["PATH"] = torch_lib + os.pathsep + env.get("PATH", "")
     env["HF_HUB_DISABLE_TELEMETRY"] = "1"
 
     print(f"\nRunning runtime video: {video_path.name}")

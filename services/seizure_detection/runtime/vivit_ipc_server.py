@@ -11,14 +11,21 @@ import struct
 import sys
 import time
 
-# Add DLL directories for Windows DLL resolution
+# Add DLL directories for Windows DLL resolution — discovered from active env, not hardcoded.
 if sys.platform == 'win32':
-    for p in [r"C:\python\Lib\site-packages\torch\lib", r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin"]:
-        if os.path.exists(p):
-            try:
-                os.add_dll_directory(p)
-            except Exception:
-                pass
+    # Locate torch/lib dynamically from the running interpreter
+    try:
+        import importlib.util as _ilu
+        _torch_spec = _ilu.find_spec('torch')
+        if _torch_spec and _torch_spec.origin:
+            _torch_lib = str(__import__('pathlib').Path(_torch_spec.origin).parent / 'lib')
+            if __import__('os').path.isdir(_torch_lib):
+                try:
+                    os.add_dll_directory(_torch_lib)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
 # Prevent transformers from trying to load torchaudio, which fails due to dynamic link mismatch
 import importlib.util
@@ -32,9 +39,14 @@ import cv2
 import numpy as np
 import torch
 
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+# Smart HuggingFace offline mode detection.
+# Allows first-time auto-download if model is not cached; enforces offline afterwards.
+ROOT_FOR_HF = Path(__file__).resolve().parents[1]
+if str(ROOT_FOR_HF / 'runtime') not in sys.path:
+    sys.path.insert(0, str(ROOT_FOR_HF / 'runtime'))
+from utils.hf_utils import configure_hf_mode as _configure_hf_mode
+_VIVIT_MODEL_ID = "google/vivit-b-16x2-kinetics400"
+_vivit_offline = _configure_hf_mode(_VIVIT_MODEL_ID)
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -85,9 +97,10 @@ def main():
     print("SYS PATH:", sys.path)
     from seizure_classifier.models import VivitModel, vivit_joint_tokens_forward_chunked, compute_joint_padding_mask
 
+    print(f"Loading ViViT from HuggingFace ({'offline/cached' if _vivit_offline else 'online download'})...")
     vivit = VivitModel.from_pretrained(
         args.vivit_name,
-        local_files_only=True,
+        local_files_only=_vivit_offline,
         use_safetensors=False,
     ).to(device).eval()
 

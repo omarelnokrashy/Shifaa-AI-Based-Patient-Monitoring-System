@@ -48,7 +48,7 @@ FallDetection_Final/
 Create and activate a Python environment, then install the dependencies:
 
 ```powershell
-cd C:\GP\FallDetection_Final
+cd <your-repo-root>/services/fall_detection
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt

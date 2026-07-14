@@ -57,18 +57,23 @@ seizure_detection/
 ├── evaluation/
 │   ├── evaluate_runtime.py             ← Clinical timing (LEO/LCO) & FPS profiling
 │   └── evaluate_segments.py            ← Classification metrics (AUROC, AUPRC)
-├── model_weights/                      ← Standardized location for all .onnx and .pth files (Must be placed manually)
+├── model_weights/                      ← Local model path (optional; models auto-resolved from
+│                                          models/seizure/ in the monorepo — see model_weights/README.md)
 ├── runtime/
 │   ├── CMakeLists.txt                  ← Native C++ build configuration
 │   ├── vivit_ipc_server.py             ← Python ViViT asynchronous IPC server
 │   ├── include/seizure_gate.hpp        ← Series gate, threshold logic, and latch implementation
 │   └── src/full_runtime.cpp            ← Main native C++ ONNX execution engine (Win32)
-├── sample_videos/                      ← Contains ground truth test demo clips (.mp4)
-├── third_party/                        ← Pre-compiled C++ dependencies (e.g., ONNX Runtime headers/libs)
-├── vendor/                             ← Git submodules for core training/architectures
-│   ├── lightweight-human-pose-estimation.pytorch/
-│   └── joint-attention-seizure-detection/
-└── runtime_outputs/                    ← Logs, CSVs, and videos (auto-created on execution)
+├── sample_videos/                      ← Ground truth test demo clips (.mp4)
+├── third_party/                        ← Pre-compiled C++ dependencies (ONNX Runtime, OpenCV via vcpkg)
+│   ├── onnxruntime/                    ← ONNX Runtime headers + import libraries
+│   ├── opencv_vcpkg_manifest/          ← OpenCV vcpkg manifest (vcpkg.json for OpenCV build)
+│   └── vcpkg_installed/                ← OpenCV compiled libraries (x64-windows)
+and the vendored Python code lives at the repository root:
+  third_party/
+  ├── joint-attention-seizure-detection/   ← ViViT + CJ seizure classifier code
+  └── lightweight-human-pose-estimation.pytorch/  ← OpenPose Python model code
+└── runtime_outputs/                    ← Logs, CSVs (auto-created on execution)
 ```
 
 ---
@@ -109,12 +114,19 @@ Ensure the following system dependencies are fully installed before beginning se
 
 ## Environment Setup & Implementation Guide
 
-### 1. Clone the Repository
-You must clone recursively to fetch the vendor modules (OpenPose and Seizure architectures).
+### 1. Clone the Repository (Monorepo)
+
+This service is part of the **Shifaa monorepo**. Clone the main repository — do **not**
+clone `omarsalama4/Seizure-Detection` separately (that is the standalone research repo).
+
 ```powershell
-git clone --recursive https://github.com/omarsalama4/Seizure-Detection.git
+git clone https://github.com/omarelnokrashy/Shifaa-AI-Based-Patient-Monitoring-System.git
+cd Shifaa-AI-Based-Patient-Monitoring-System
 ```
-*(If you forgot `--recursive`, run `git submodule update --init --recursive`)*
+
+The vendored Python modules (`joint-attention-seizure-detection` and
+`lightweight-human-pose-estimation.pytorch`) are checked in under `third_party/`
+in the repository root and are automatically on the path at runtime.
 
 ### 2. Python Environment Setup
 Create an isolated Conda environment to avoid conflicting PyTorch CUDA versions.
@@ -125,48 +137,78 @@ pip install -r requirements.txt
 ```
 
 ### 3. C++ Dependencies (Third Party)
-The C++ runtime requires third-party dependencies (ONNX Runtime and OpenCV). 
+
+The C++ runtime requires pre-compiled third-party libraries (ONNX Runtime and OpenCV).
 
 **Option A: Windows Users (Recommended Fast Path)**
-1. Download the pre-compiled Windows dependencies from the [Third Party Drive Link](https://drive.google.com/drive/folders/1EhASZeiC5s5ads-luZJwHTpH79ckymg7?usp=sharing).
-2. Create a folder named `third_party/` in the repository root.
-3. Extract the 3 downloaded folders directly into `third_party/` so that your directory structure exactly matches the following:
-```text
-seizure_detection/
-└── third_party/
-    ├── onnxruntime/
-    ├── opencv_vcpkg_master/
-    └── vcpkg_installed/
-```
-*(This completely bypasses the need to compile OpenCV from source yourself).*
 
-**Option B: Non-Windows Users (Manual Installation via VCPKG)**
-If you are running on a different OS, you must compile OpenCV manually using VCPKG, and download your platform's ONNX Runtime:
-1. Download VCPKG: `git clone https://github.com/microsoft/vcpkg.git`
-2. Bootstrap VCPKG: `./vcpkg/bootstrap-vcpkg.sh` (or `.bat` on Windows).
-3. Install OpenCV: `./vcpkg/vcpkg install --triplet x64-linux` (replace `x64-linux` with your target triplet).
-4. Download the `onnxruntime` release for your OS from the [ONNX Runtime GitHub Releases](https://github.com/microsoft/onnxruntime/releases) and place the extracted contents into `third_party/onnxruntime`.
+The pre-compiled libraries are included in the repository under `third_party/`:
+
+```text
+services/seizure_detection/third_party/
+├── onnxruntime/          ← ONNX Runtime 1.23.2 headers + import libraries
+├── opencv_vcpkg_manifest/ ← OpenCV vcpkg manifest
+└── vcpkg_installed/      ← Pre-compiled OpenCV libs (x64-windows)
+```
+
+If the `third_party/` directory is **not** present (e.g., it was excluded from your
+git history), download the pre-compiled bundle from the
+[Third Party Drive Link](https://drive.google.com/drive/folders/1EhASZeiC5s5ads-luZJwHTpH79ckymg7?usp=sharing)
+and extract so the structure exactly matches the above.
+
+**Option B: Manual Installation via VCPKG**
+
+If you are on a different OS or prefer to compile from source:
+
+1. `git clone https://github.com/microsoft/vcpkg.git`
+2. `./vcpkg/bootstrap-vcpkg.bat` (Windows) or `./vcpkg/bootstrap-vcpkg.sh`
+3. `./vcpkg/vcpkg install opencv4 --triplet x64-windows`
+4. Download ONNX Runtime from [GitHub Releases](https://github.com/microsoft/onnxruntime/releases)
+   and place the extracted contents into `third_party/onnxruntime`.
 
 ### 4. Required Files & Model Checkpoints
-You must manually place the required proprietary ONNX graphs and PyTorch fallback weights into the `model_weights/` directory. The pipeline will crash if these are missing.
 
-| Model File | Source | Input | Output | Purpose |
-|---|---|---|---|---|
-| `pose.onnx` | Extracted from OpenPose repository | RGB Frame | Heatmaps / PAFs | Skeleton extraction |
-| `vsvig_protogcn.onnx` | Exported locally | 14 keypoints | Risk Float | VSViG Temporal Risk |
-| `cj_final.onnx` | Exported locally | ViViT Tokens | Seizure Prob | Cross-Joint Head |
-| `pose.pth` | Extracted from OpenPose repository | RGB Frame | Heatmaps / PAFs | Legacy PyTorch fallback |
+All model files are stored at the **repository root** under `models/seizure/` and are
+automatically resolved by the service and evaluation scripts when run from the
+standard monorepo layout. **You do not need to copy anything into `model_weights/`.**
 
-*Additionally, the Python server will attempt to download the `vivit-b-16x2-kinetics400` weights from the HuggingFace Hub on its first run.* 
-
-### 5. Environment Variables (For Offline EMU Operation)
-To ensure HuggingFace models load securely from the local cache without phoning home (required for air-gapped hospital deployments):
-```powershell
-$env:HF_HUB_OFFLINE="1"
-$env:TRANSFORMERS_OFFLINE="1"
-$env:HF_HUB_DISABLE_TELEMETRY="1"
+```text
+Medical-History-Chatbot/
+└── models/
+    └── seizure/
+        ├── pose.onnx          (280 KB header + pose.onnx.data 15.6 MB)
+        ├── pose.pth           (47.1 MB — PyTorch fallback)
+        ├── vsvig_protogcn.onnx (+ vsvig_protogcn.onnx.data)
+        ├── cj_final.onnx     (+ cj_final.onnx.data)
+        └── ...data files
 ```
-*(Note: You must run the server **once** with internet access to cache the ViViT model before using offline mode).*
+
+If the `models/seizure/` directory is missing, contact the repository maintainer
+for the model files (they are too large for GitHub but are committed via Git LFS
+or must be obtained from the project team).
+
+For the **model_weights/** directory (used only when running scripts standalone),
+see `services/seizure_detection/model_weights/README.md`.
+
+### 5. Environment Variables (HuggingFace / ViViT)
+
+The service uses **smart offline detection** — you do not need to set any environment
+variables manually. On the **first run**, the service downloads
+`google/vivit-b-16x2-kinetics400` from HuggingFace automatically (~300 MB).
+On all subsequent runs it uses the local cache.
+
+For convenience, run the dedicated download script before starting the service:
+```powershell
+python scripts\download_vivit.py
+```
+
+For **air-gapped / offline-only** deployments, pre-populate the HuggingFace cache
+on a machine with internet access and copy the cache directory to the target machine:
+```text
+~/.cache/huggingface/hub/models--google--vivit-b-16x2-kinetics400/
+```
+Then set `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` in `.env` — the service
+will detect the cache and enforce offline mode automatically.
 
 ### 6. Sample Videos
 Download the proprietary `pat*.mp4` sample videos into the `sample_videos/` folder from the [Sample Videos Drive Link](https://drive.google.com/drive/folders/1RjK-vHeSD_NFbk2HMjD6iusjOAOhxiDx). The `evaluate_runtime.py` script specifically looks for `pat03_Sz1PG_demo_good.mp4`, `pat04_Sz1P_demo_good.mp4`, etc.

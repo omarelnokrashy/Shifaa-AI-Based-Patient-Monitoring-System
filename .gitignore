@@ -1,14 +1,22 @@
-# Python / Backend
+# ── Python / Backend ──────────────────────────────────────────────────────────
 venv/
-reference_docs/
+.venv/
+env/
 .env
+reference_docs/
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
 .pytest_cache/
 import_log.txt
 Data/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
 
-# React / Node / Vite
+# ── React / Node / Vite ───────────────────────────────────────────────────────
 node_modules/
 dist/
 dist-ssr/
@@ -21,10 +29,26 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Databases, Logs and Uploads
+# ── Databases, Logs and Uploads ───────────────────────────────────────────────
 *.db
 *.log
 logs/
+runtime/logs/
+outputs/runtime/
 uploads/*
 !uploads/Architectures/
 !uploads/Architectures/**
+
+# ── C++ Build Artifacts ───────────────────────────────────────────────────────
+services/seizure_detection/runtime/build/*.pdb
+services/seizure_detection/runtime/build/*.log
+services/seizure_detection/runtime_outputs/*
+!services/seizure_detection/runtime_outputs/.gitkeep
+
+# ── IDE and OS ────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.suo
+*.user
+Thumbs.db
+.DS_Store

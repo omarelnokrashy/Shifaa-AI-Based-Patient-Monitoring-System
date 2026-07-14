@@ -23,10 +23,8 @@ else
 fi
 
 # ── Helper to pick the right Python interpreter ───────────────────────────────
-CONDA_PYTHON="/home/omar/anaconda3/envs/gp/bin/python3"
-if [[ ! -x "$CONDA_PYTHON" ]]; then
-    CONDA_PYTHON="$(command -v python3 || echo python3)"
-fi
+# Uses the python3 from the currently active conda/venv environment.
+CONDA_PYTHON="$(command -v python3 || command -v python || echo python3)"
 
 python_for() {
     local repo_dir="$1"

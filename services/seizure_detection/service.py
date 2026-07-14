@@ -17,9 +17,14 @@ _orig_find_spec = importlib.util.find_spec
 importlib.util.find_spec = lambda name, package=None: None if name == 'torchaudio' else _orig_find_spec(name, package)
 
 import os
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+# Smart HuggingFace offline detection — must run before any HF imports.
+# Sets offline mode only when the model is already cached; otherwise allows
+# first-time download so a fresh machine can self-provision.
+sys_pre = __import__('sys')
+sys_pre.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent / 'runtime'))
+from utils.hf_utils import configure_hf_mode as _configure_hf_mode
+_VIVIT_MODEL_ID = "google/vivit-b-16x2-kinetics400"
+_vivit_offline = _configure_hf_mode(_VIVIT_MODEL_ID)
 
 import asyncio
 import csv
@@ -68,13 +73,29 @@ def load_global_models():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log.info(f"Loading global PyTorch models on device: {device}...")
     
-    # Configure PATH for CUDA bin and torch/lib before import
-    paths_to_add = [
-        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin",
-        r"C:\python\Lib\site-packages\torch\lib"
-    ]
-    for p in paths_to_add:
-        if os.path.exists(p):
+    # Add torch/lib and CUDA bin to PATH so DLLs resolve on Windows.
+    # Paths are discovered from the active Python environment — no hardcoding.
+    dll_dirs: list[str] = []
+    try:
+        import torch
+        torch_lib = str(__import__('pathlib').Path(torch.__file__).parent / 'lib')
+        if os.path.isdir(torch_lib):
+            dll_dirs.append(torch_lib)
+    except Exception:
+        pass
+    # Add CUDA bin if nvcc or cuda_runtime is detectable
+    try:
+        import subprocess as _sp
+        _nvcc = _sp.run(['nvcc', '--version'], capture_output=True, timeout=5)
+        if _nvcc.returncode == 0:
+            import shutil as _sh
+            nvcc_path = _sh.which('nvcc')
+            if nvcc_path:
+                dll_dirs.append(str(__import__('pathlib').Path(nvcc_path).parent))
+    except Exception:
+        pass
+    for p in dll_dirs:
+        if os.path.isdir(p):
             os.environ["PATH"] = p + os.pathsep + os.environ.get("PATH", "")
             if sys.platform == 'win32':
                 try:
@@ -89,10 +110,11 @@ def load_global_models():
     pose_weights = REPO_ROOT.parent.parent / "models" / "seizure" / "pose.pth"
     pose_model = load_pose_model(str(pose_weights), device)
     
-    vivit_name = "google/vivit-b-16x2-kinetics400"
+    vivit_name = _VIVIT_MODEL_ID
+    log.info(f"Loading ViViT from HuggingFace ({'offline/cached' if _vivit_offline else 'online download'})...")
     vivit_model = VivitModel.from_pretrained(
         vivit_name,
-        local_files_only=True,
+        local_files_only=_vivit_offline,
         use_safetensors=False,
     ).to(device).eval()
     log.info("Global PyTorch models loaded successfully.")

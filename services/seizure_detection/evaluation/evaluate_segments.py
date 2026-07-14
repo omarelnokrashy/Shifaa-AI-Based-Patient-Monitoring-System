@@ -31,6 +31,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Smart HuggingFace offline detection (must precede any HF import)
+if str(ROOT / 'runtime') not in sys.path:
+    sys.path.insert(0, str(ROOT / 'runtime'))
+from utils.hf_utils import configure_hf_mode as _configure_hf_mode
+_VIVIT_MODEL_ID = "google/vivit-b-16x2-kinetics400"
+_vivit_offline = _configure_hf_mode(_VIVIT_MODEL_ID)
+
 from runtime.utils.patches import extract_patches
 from runtime.utils.pose import get_openpose_keypoints, load_pose_model, map_crop_kpts_to_frame
 from runtime.utils.tubelet_builder import build_tubelets
@@ -40,9 +47,22 @@ DEFAULT_MANIFEST = ROOT / "evaluation" / "manifests" / "cross_joint_segments_pap
 DEFAULT_SCORES = ROOT / "evaluation" / "results" / "official_test_scores.csv"
 DEFAULT_OUT_JSON = ROOT / "evaluation" / "results" / "segment_metrics.json"
 FROZEN_TARGET_REPORT = ROOT / "evaluation" / "results" / "segments_reproduction_report.json"
-DEFAULT_CJ_ONNX = ROOT / "model_weights" / "cj_final.onnx"
-DEFAULT_VSVIG_ONNX = ROOT / "model_weights" / "vsvig_protogcn.onnx"
-DEFAULT_POSE_WEIGHTS = ROOT / "model_weights" / "pose.pth"
+
+# Model paths: prefer model_weights/ inside the service dir, fall back to shared models/seizure/
+def _find_model(filename: str) -> Path:
+    """Locate a model file searching service-local model_weights/ then shared models/seizure/."""
+    candidates = [
+        ROOT / "model_weights" / filename,
+        ROOT.parent.parent / "models" / "seizure" / filename,
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]  # return primary path even if missing (will error at load time with a clear message)
+
+DEFAULT_CJ_ONNX = _find_model("cj_final.onnx")
+DEFAULT_VSVIG_ONNX = _find_model("vsvig_protogcn.onnx")
+DEFAULT_POSE_WEIGHTS = _find_model("pose.pth")
 DEFAULT_THRESHOLD = 0.3081087228480716
 
 
@@ -67,9 +87,10 @@ def generate_scores(args: argparse.Namespace) -> None:
         sys.path.insert(0, str(vendor_path))
     from seizure_classifier.models import VivitModel, vivit_joint_tokens_forward_chunked
 
+    print(f"Loading ViViT ({'offline/cached' if _vivit_offline else 'online download'})...")
     vivit = VivitModel.from_pretrained(
-        "google/vivit-b-16x2-kinetics400",
-        local_files_only=True,
+        _VIVIT_MODEL_ID,
+        local_files_only=_vivit_offline,
     ).to(device).eval()
 
     with args.manifest.open("r", newline="", encoding="utf-8") as f:

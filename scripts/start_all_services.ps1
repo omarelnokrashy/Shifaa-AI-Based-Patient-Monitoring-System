@@ -28,12 +28,10 @@ if (Test-Path $envFile) {
 }
 
 # -- 2. Pick Python Interpreter ------------------------------------------------
-$pythonPath = "C:\Users\omars\miniconda3\envs\medical_chatbot\python.exe"
-if (-not (Test-Path $pythonPath)) {
-    $pythonPath = (Get-Command python -ErrorAction SilentlyContinue).Source
-    if (-not $pythonPath) {
-        $pythonPath = "python"
-    }
+# Use the python from the active conda/venv environment, or fall back to PATH.
+$pythonPath = (Get-Command python -ErrorAction SilentlyContinue).Source
+if (-not $pythonPath) {
+    $pythonPath = "python"
 }
 Write-Host "[OK] Using Python: $pythonPath" -ForegroundColor Cyan
 
